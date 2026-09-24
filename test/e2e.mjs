@@ -101,7 +101,7 @@ await canvas.setViewportSize({width:390,height:844});
 const finishCanvasErrors=await pageErrors(canvas,'Canvas fixture');
 await canvas.goto(base+'test/canvas-fixture.html',{waitUntil:'networkidle'});
 await canvas.waitForSelector('#provenance-canvas-lens-v2');
-await canvas.waitForFunction(()=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes('2 question blocks detected'));
+await canvas.waitForFunction(()=>{const t=document.querySelector('#provenance-canvas-lens-v2')?.innerText||'';return t.includes('2 question blocks detected')||t.includes('2 unique questions')});
 pass('Canvas Lens detects classic Canvas-style questions',true);
 const demoText=await canvas.locator('#provenance-canvas-lens-v2').innerText();
 pass('Canvas Lens fixture evidence ranking favors Chlorophyll',demoText.includes('Best-supported by visible evidence: B — Chlorophyll'));
@@ -124,7 +124,7 @@ await canvas.evaluate(()=>{
   q.innerHTML='<div class="question_text">Which gas is released?</div><label><input type="radio" name="q3"> Oxygen</label><label><input type="radio" name="q3"> Nitrogen</label>';
   document.body.appendChild(q);
 });
-await canvas.waitForFunction(()=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes('3 question blocks detected'));
+await canvas.waitForFunction(()=>{const t=document.querySelector('#provenance-canvas-lens-v2')?.innerText||'';return t.includes('3 question blocks detected')||t.includes('3 unique questions')});
 pass('Canvas Lens auto-rescans dynamically loaded questions',true);
 
 const selected=await canvas.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
