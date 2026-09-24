@@ -154,7 +154,7 @@ async function appSuite(browserType,label,contextOptions){
   const sw=await page.evaluate(async()=>('serviceWorker' in navigator)?!!(await navigator.serviceWorker.getRegistration()):true);
   ok(label+' service worker registration',sw);
 
-  await page.screenshot({path:'test/artifacts/stress-'+label.replace(/\s+/g,'-')+'.png',fullPage:true});
+  await page.screenshot({path:'test/artifacts/stress-'+label.replace(/\s+/g,'-')+'.png',fullPage:false});
   ok(label+' runtime console clean',runtime.length===0,runtime.join(' | '));
   await browser.close();
 }
