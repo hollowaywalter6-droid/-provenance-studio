@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#10131a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Provenance">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="./manifest.webmanifest">
+<title>Provenance Studio — Standalone</title>
+<style>
+:root{
+  --bg:#0b0d12;--panel:#121722;--panel2:#171d2a;--line:#293144;--text:#f5f7fb;
+  --muted:#9ca7ba;--accent:#8b7cff;--accent2:#50d3b5;--warn:#ffbd5b;--bad:#ff6b6b;
+  --ok:#63e6be;--shadow:0 20px 60px rgba(0,0,0,.35)
+}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#171b28 0,#0b0d12 45%,#080a0e 100%);
+color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+button,input,textarea,select{font:inherit}
+button{min-height:46px;border:0;border-radius:14px;padding:12px 16px;background:#20283a;color:var(--text);font-weight:700;cursor:pointer}
+button.primary{background:linear-gradient(135deg,#7867ff,#9a8cff)}
+button.secondary{background:#1a2231;border:1px solid var(--line)}
+button.ghost{background:transparent;border:1px solid var(--line)}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,textarea,select{width:100%;background:#0e131c;border:1px solid var(--line);color:var(--text);border-radius:14px;padding:13px}
+textarea{min-height:220px;resize:vertical;line-height:1.55}
+.app{max-width:1200px;margin:auto;padding:18px}
+.top{position:sticky;top:0;z-index:20;background:rgba(11,13,18,.88);backdrop-filter:blur(18px);padding:12px 0 16px}
+.brandrow{display:flex;gap:14px;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;border-radius:14px;background:
+linear-gradient(135deg,#8b7cff,#50d3b5);box-shadow:0 0 40px rgba(139,124,255,.35)}
+h1{font-size:1.35rem;margin:0}.sub{font-size:.82rem;color:var(--muted)}
+.status{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:999px;background:#101722;border:1px solid var(--line);font-size:.8rem}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 14px var(--ok)}
+.hero{display:grid;grid-template-columns:1.3fr .7fr;gap:18px;margin:18px 0}
+.card{background:linear-gradient(180deg,rgba(23,29,42,.96),rgba(17,22,32,.96));border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:var(--shadow)}
+.glass{background:linear-gradient(180deg,rgba(139,124,255,.10),rgba(80,211,181,.05))}
+.kicker{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent2);font-weight:800}
+.big{font-size:2rem;line-height:1.05;margin:.4rem 0 .7rem}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.metric{padding:15px;border-radius:18px;background:#0f141e;border:1px solid var(--line)}
+.metric b{font-size:1.3rem}.metric span{display:block;color:var(--muted);font-size:.76rem;margin-top:4px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+.tabs{display:flex;overflow:auto;gap:8px;padding-bottom:8px}
+.tab{white-space:nowrap}.tab.active{background:var(--accent);color:#fff}
+.panel{display:none}.panel.active{display:block}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.label{font-size:.8rem;color:var(--muted);margin-bottom:6px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.filebox{position:relative;border:1px dashed #54617a;border-radius:18px;padding:16px;text-align:center;background:#0e131b}
+.filebox input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.pill{display:inline-flex;padding:7px 10px;border-radius:999px;background:#111926;border:1px solid var(--line);font-size:.76rem}
+.good{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.result{white-space:pre-wrap;background:#0d121a;border:1px solid var(--line);border-radius:16px;padding:14px;min-height:120px}
+.list{display:grid;gap:9px}.item{padding:12px;border-radius:15px;background:#0e141d;border:1px solid var(--line)}
+.small{font-size:.8rem;color:var(--muted)}
+.orbwrap{display:flex;justify-content:center;align-items:center;min-height:250px;perspective:900px}
+.orb{width:190px;height:190px;border-radius:50%;position:relative;transform-style:preserve-3d;animation:float 7s ease-in-out infinite;
+background:radial-gradient(circle at 32% 28%,#c8c0ff 0,#8b7cff 22%,#4d46a3 48%,#18203b 76%,#0b0d12 100%);
+box-shadow:inset -25px -28px 55px rgba(0,0,0,.45),0 0 80px rgba(139,124,255,.35)}
+.orb:before,.orb:after{content:"";position:absolute;inset:22px;border:1px solid rgba(255,255,255,.35);border-radius:50%;transform:rotateX(68deg)}
+.orb:after{transform:rotateY(68deg)}
+@keyframes float{0%,100%{transform:rotateY(-12deg) translateY(0)}50%{transform:rotateY(16deg) translateY(-10px)}}
+.testline{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
+.runtime-warning{margin:10px 0 0;padding:11px 13px;border-radius:14px;background:#2b1d12;border:1px solid #6b4824;color:#ffd79d;font-size:.8rem}
+.preview{display:none;margin-top:12px;max-width:100%;max-height:240px;border-radius:16px;border:1px solid var(--line);object-fit:contain;background:#090d14}
+@media(max-width:800px){.hero,.two{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.three{grid-template-columns:1fr}.big{font-size:1.7rem}}
+@media(max-width:480px){.app{padding:12px}.card{padding:14px;border-radius:18px}.brandrow{align-items:flex-start}.status{font-size:.72rem}.grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="brandrow">
+      <div class="brand"><div class="logo"></div><div><h1>Provenance Studio</h1><div class="sub">Standalone • Zero-credit local mode</div></div></div>
+      <div class="status"><span class="dot"></span> Works without Replit</div>
+    </div>
+    <div id="runtimeWarning" class="runtime-warning">Checking interactive runtime… If this message does not disappear, this file viewer is blocking the app’s JavaScript. The app must be opened in a normal browser/hosted page for buttons to run.</div>
+  </div>
+
+  <section class="hero">
+    <div class="card glass">
+      <div class="kicker">Local Intelligence Core</div>
+      <div class="big">Your writing workspace should work even when every cloud account is disconnected.</div>
+      <p class="small">Projects, uploads, analysis, revision tools, exports, diagnostics, and local storage all run on this device. Cloud AI and connectors are optional enhancements.</p>
+      <div class="toolbar">
+        <button class="primary" onclick="showTab('draft')">Open workspace</button>
+        <button class="secondary" onclick="runSelfTest()">Test everything</button>
+      </div>
+    </div>
+    <div class="card orbwrap"><div class="orb" title="Local Core"></div></div>
+  </section>
+
+  <div class="grid">
+    <div class="metric"><b id="wordMetric">0</b><span>Words</span></div>
+    <div class="metric"><b id="sentenceMetric">0</b><span>Sentences</span></div>
+    <div class="metric"><b id="projectMetric">0</b><span>Saved projects</span></div>
+    <div class="metric"><b id="signalMetric">—</b><span>Pattern signal</span></div>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="draft" onclick="showTab('draft')">Draft</button>
+      <button class="tab" data-tab="projects" onclick="showTab('projects')">Projects</button>
+      <button class="tab" data-tab="rewrite" onclick="showTab('rewrite')">Rewrite</button>
+      <button class="tab" data-tab="analysis" onclick="showTab('analysis')">Analysis</button>
+      <button class="tab" data-tab="verify" onclick="showTab('verify')">Verify</button>
+      <button class="tab" data-tab="tools" onclick="showTab('tools')">Tools</button>
+      <button class="tab" data-tab="export" onclick="showTab('export')">Export</button>
+      <button class="tab" data-tab="connectors" onclick="showTab('connectors')">Connectors</button>
+      <button class="tab" data-tab="diagnostics" onclick="showTab('diagnostics')">Diagnostics</button>
+    </div>
+
+    <div class="panel active" id="panel-draft">
+      <div class="two">
+        <div>
+          <div class="label">Writing to analyze</div>
+          <textarea id="draft" placeholder="Paste or type here…" oninput="onDraftChange()"></textarea>
+          <div class="toolbar">
+            <button class="primary" onclick="analyze()">Analyze writing</button>
+            <button class="secondary" onclick="clearDraft()">Clear</button>
+          </div>
+        </div>
+        <div>
+          <div class="label">Upload a document</div>
+          <div class="filebox">
+            <strong>Tap here to choose a file</strong>
+            <div class="small" style="margin-top:6px">TXT, MD, CSV, JSON, DOCX, and many text-based PDFs can be extracted locally. Files that need OCR still upload safely and show a clear status.</div>
+            <input id="fileInput" type="file" accept=".txt,.md,.csv,.json,.doc,.docx,.pdf,image/*" onchange="handleFile(event)">
+          </div>
+          <div class="label" style="margin-top:16px">Camera / photo</div>
+          <div class="filebox">
+            <strong>Take or choose a photo</strong>
+            <div class="small" style="margin-top:6px">Photos can be attached to the project locally.</div>
+            <input id="cameraInput" type="file" accept="image/*" capture="environment" onchange="handleImage(event)">
+          </div>
+          <div id="uploadStatus" class="result" style="margin-top:14px;min-height:80px">No file selected.</div>
+          <img id="imagePreview" class="preview" alt="Uploaded image preview">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-projects">
+      <div class="two">
+        <div>
+          <div class="label">Project name</div>
+          <input id="projectName" placeholder="Untitled project">
+          <div class="toolbar">
+            <button class="primary" onclick="saveProject()">Save project</button>
+            <button class="secondary" onclick="newProject()">New project</button>
+          </div>
+        </div>
+        <div><div class="label">Saved locally on this device</div><div id="projectList" class="list"></div></div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-rewrite">
+      <div class="three">
+        <button onclick="rewrite('natural')">Natural</button>
+        <button onclick="rewrite('clear')">Clear</button>
+        <button onclick="rewrite('concise')">Concise</button>
+        <button onclick="rewrite('academic')">Academic</button>
+        <button onclick="rewrite('direct')">Direct</button>
+        <button onclick="grammarFix()">Grammar cleanup</button>
+      </div>
+      <div class="label" style="margin-top:16px">Revision</div>
+      <div id="rewriteResult" class="result">Choose a revision mode.</div>
+      <div class="toolbar"><button class="secondary" onclick="applyRewrite()">Use this revision</button></div>
+    </div>
+
+    <div class="panel" id="panel-analysis">
+      <div class="two">
+        <div class="card" style="box-shadow:none">
+          <div class="kicker">Pattern signal</div>
+          <div class="big" id="scoreBig">—</div>
+          <div id="bandText" class="small">Run analysis first.</div>
+        </div>
+        <div class="card" style="box-shadow:none">
+          <div class="kicker">Sentence map</div>
+          <div id="sentenceMap" class="list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-verify">
+      <div class="two">
+        <div>
+          <div class="kicker">Citation verifier</div>
+          <p class="small">Local mode checks citation structure, URLs, DOI patterns, and uncited factual claims. Live source validation requires an optional web connector.</p>
+          <button class="primary" onclick="verifyCitations()">Check citations</button>
+          <div id="citationResult" class="result" style="margin-top:12px"></div>
+        </div>
+        <div>
+          <div class="kicker">Hallucination / claim check</div>
+          <p class="small">Flags statements that deserve evidence. This is a local risk screen, not a live fact check.</p>
+          <button class="primary" onclick="checkClaims()">Check claims</button>
+          <div id="claimResult" class="result" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-tools">
+      <div class="two">
+        <div>
+          <div class="label">Word filter — comma-separated</div>
+          <input id="wordFilter" placeholder="delve, robust, furthermore">
+          <div class="toolbar">
+            <button onclick="findFiltered()">Find words</button>
+            <button onclick="removeFiltered()">Remove words</button>
+          </div>
+          <div id="filterResult" class="result"></div>
+        </div>
+        <div>
+          <div class="label">Study Assist</div>
+          <textarea id="studyQuestion" placeholder="Paste a question or prompt…"></textarea>
+          <div class="toolbar"><button onclick="studyAssist()">Break it down</button></div>
+          <div id="studyResult" class="result"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-export">
+      <div class="three">
+        <button onclick="downloadText('txt')">Download TXT</button>
+        <button onclick="downloadText('md')">Download Markdown</button>
+        <button onclick="downloadJSON()">Download JSON</button>
+        <button onclick="downloadCSV()">Download CSV</button>
+        <button onclick="downloadXLSX()">Download XLSX</button>
+        <button onclick="copyDraft()">Copy text</button>
+        <button onclick="shareProjectFile()">Share project file</button>
+        <button onclick="shareDraft()">Share text</button>
+      </div>
+      <p class="small" style="margin-top:14px">XLSX and CSV open in Excel. “Share project file” uses the iPhone/iPad share sheet so you can save to Files, Google Drive, OneDrive, Dropbox, or another installed provider without a paid hosting service.</p>
+    </div>
+
+    <div class="panel" id="panel-connectors">
+      <div class="two">
+        <div class="item">
+          <strong>Files / Google Drive / OneDrive / Dropbox</strong>
+          <div class="small" style="margin:8px 0">On iPhone and iPad, the normal file picker can browse providers enabled in the Files app. No separate app login is required here.</div>
+          <div class="toolbar">
+            <button class="primary" onclick="openNativeFilePicker()">Import a document</button>
+            <button onclick="shareProjectFile()">Save/share project file</button>
+          </div>
+        </div>
+        <div class="item">
+          <strong>Excel</strong>
+          <div class="small" style="margin:8px 0">Create a real XLSX workbook locally, then open or save it with Excel, OneDrive, Drive, or Files.</div>
+          <div class="toolbar"><button onclick="downloadXLSX()">Create XLSX</button></div>
+        </div>
+        <div class="item">
+          <strong>Claude / ChatGPT / Copilot</strong>
+          <div class="small">Optional advanced AI providers. This zero-credit build does not hard-code API keys or require them for core features.</div>
+        </div>
+        <div class="item">
+          <strong>Replit Developer</strong>
+          <div class="small">Developer-only. It is never required to open or use the app.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-diagnostics">
+      <div class="toolbar"><button class="primary" onclick="runSelfTest()">Run all tests</button></div>
+      <div id="testResults"></div>
+    </div>
+  </section>
+  <footer>Provenance Studio Standalone v2 • Local-first • No Replit credits required</footer>
+</div>
+
+<script>
+const STORE='provenance-standalone-projects-v1';
+const CURRENT='provenance-standalone-current-v1';
+let rewriteBuffer='';
+
+function $(id){return document.getElementById(id)}
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===name));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  $('panel-'+name).classList.add('active');
+}
+function words(t){return (t.trim().match(/\b[\w’'-]+\b/g)||[])}
+function sents(t){return (t.replace(/\n+/g,' ').match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[]).map(x=>x.trim()).filter(Boolean)}
+function onDraftChange(){
+  const t=$('draft').value;
+  $('wordMetric').textContent=words(t).length;
+  $('sentenceMetric').textContent=sents(t).length;
+  localStorage.setItem(CURRENT,JSON.stringify({name:$('projectName').value,text:t,updated:Date.now()}));
+}
+function loadCurrent(){
+  try{const c=JSON.parse(localStorage.getItem(CURRENT)||'null');if(c){$('projectName').value=c.name||'';$('draft').value=c.text||''}}catch(e){}
+  onDraftChange(); renderProjects();
+}
+function getProjects(){try{return JSON.parse(localStorage.getItem(STORE)||'[]')}catch(e){return[]}}
+function setProjects(p){localStorage.setItem(STORE,JSON.stringify(p));renderProjects()}
+function renderProjects(){
+  const p=getProjects(); $('projectMetric').textContent=p.length;
+  $('projectList').innerHTML=p.length?'':'<div class="small">No saved projects yet.</div>';
+  p.sort((a,b)=>b.updated-a.updated).forEach(pr=>{
+    const d=document.createElement('div');d.className='item';
+    d.innerHTML='<strong>'+esc(pr.name||'Untitled project')+'</strong><div class="small">'+new Date(pr.updated).toLocaleString()+' • '+words(pr.text||'').length+' words</div>';
+    const row=document.createElement('div');row.className='toolbar';
+    const open=document.createElement('button');open.textContent='Open';open.onclick=()=>{ $('projectName').value=pr.name;$('draft').value=pr.text||'';onDraftChange();showTab('draft')};
+    const del=document.createElement('button');del.textContent='Delete';del.className='ghost';del.onclick=()=>{if(confirm('Delete this project?'))setProjects(getProjects().filter(x=>x.id!==pr.id))};
+    row.append(open,del);d.append(row);$('projectList').append(d);
+  })
+}
+function saveProject(){
+  const name=$('projectName').value.trim()||'Untitled project', text=$('draft').value;
+  let p=getProjects(); let existing=p.find(x=>x.name===name);
+  if(existing){existing.text=text;existing.updated=Date.now()}else p.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),name,text,updated:Date.now()});
+  setProjects(p);localStorage.setItem(CURRENT,JSON.stringify({name,text,updated:Date.now()}));alert('Project saved on this device.');
+}
+function newProject(){$('projectName').value='';$('draft').value='';onDraftChange();showTab('draft')}
+function clearDraft(){if(confirm('Clear the current draft?')){$('draft').value='';onDraftChange()}}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+async function inflateBytes(bytes, format='deflate-raw'){
+  if(!('DecompressionStream' in window)) throw new Error('This browser does not support local decompression.');
+  const ds=new DecompressionStream(format);
+  return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer());
+}
+function u16(v,o){return v.getUint16(o,true)}
+function u32(v,o){return v.getUint32(o,true)}
+async function zipEntry(arrayBuffer, wanted){
+  const u8=new Uint8Array(arrayBuffer), v=new DataView(arrayBuffer);
+  let eocd=-1;
+  for(let i=u8.length-22;i>=Math.max(0,u8.length-65557);i--){
+    if(v.getUint32(i,true)===0x06054b50){eocd=i;break}
+  }
+  if(eocd<0) throw new Error('ZIP directory not found.');
+  const count=u16(v,eocd+10), cdOffset=u32(v,eocd+16);
+  let p=cdOffset;
+  for(let n=0;n<count;n++){
+    if(v.getUint32(p,true)!==0x02014b50) throw new Error('Invalid ZIP directory.');
+    const method=u16(v,p+10), compSize=u32(v,p+20), nameLen=u16(v,p+28), extraLen=u16(v,p+30), commentLen=u16(v,p+32), localOffset=u32(v,p+42);
+    const name=new TextDecoder().decode(u8.slice(p+46,p+46+nameLen));
+    if(name===wanted){
+      if(v.getUint32(localOffset,true)!==0x04034b50) throw new Error('Invalid ZIP entry.');
+      const ln=u16(v,localOffset+26), le=u16(v,localOffset+28), dataStart=localOffset+30+ln+le;
+      const data=u8.slice(dataStart,dataStart+compSize);
+      if(method===0) return data;
+      if(method===8) return inflateBytes(data,'deflate-raw');
+      throw new Error('Unsupported ZIP compression method '+method+'.');
+    }
+    p+=46+nameLen+extraLen+commentLen;
+  }
+  throw new Error('Entry '+wanted+' not found.');
+}
+async function extractDocx(arrayBuffer){
+  const xmlBytes=await zipEntry(arrayBuffer,'word/document.xml');
+  const xml=new TextDecoder('utf-8').decode(xmlBytes);
+  const doc=new DOMParser().parseFromString(xml,'application/xml');
+  return [...doc.getElementsByTagNameNS('*','p')].map(p=>[...p.getElementsByTagNameNS('*','t')].map(t=>t.textContent||'').join('')).filter(Boolean).join('\n\n').trim();
+}
+function decodePdfLiteral(s){
+  return s.replace(/\\([nrtbf()\\])/g,(m,c)=>({n:'\n',r:'\r',t:'\t',b:'\b',f:'\f','(':'(',')':')','\\':'\\'}[c]||c))
+          .replace(/\\([0-7]{1,3})/g,(m,o)=>String.fromCharCode(parseInt(o,8)));
+}
+function pdfTextOperators(text){
+  const out=[];
+  const tj=/\(((?:\\.|[^\\)])*)\)\s*Tj/g; let m;
+  while((m=tj.exec(text))) out.push(decodePdfLiteral(m[1]));
+  const tjArray=/\[((?:.|\n|\r)*?)\]\s*TJ/g;
+  while((m=tjArray.exec(text))){
+    const seg=m[1], rx=/\(((?:\\.|[^\\)])*)\)/g; let sm, s='';
+    while((sm=rx.exec(seg))) s+=decodePdfLiteral(sm[1]);
+    if(s) out.push(s);
+  }
+  return out;
+}
+async function extractPdf(arrayBuffer){
+  const u8=new Uint8Array(arrayBuffer);
+  const latin=new TextDecoder('latin1').decode(u8);
+  const chunks=[...pdfTextOperators(latin)];
+  const rx=/([\s\S]{0,240}?)stream\r?\n([\s\S]*?)endstream/g; let m, scanned=0;
+  while((m=rx.exec(latin)) && scanned<120){
+    scanned++;
+    const dict=m[1], raw=m[2];
+    if(!/FlateDecode/.test(dict)) continue;
+    try{
+      const start=m.index+m[0].indexOf('stream')+'stream'.length;
+      let ds=start;
+      if(latin[ds]==='\r'&&latin[ds+1]==='\n') ds+=2; else if(latin[ds]==='\n') ds++;
+      const end=m.index+m[0].lastIndexOf('endstream');
+      const bytes=u8.slice(ds,end);
+      const inflated=await inflateBytes(bytes,'deflate');
+      chunks.push(...pdfTextOperators(new TextDecoder('latin1').decode(inflated)));
+    }catch(e){}
+  }
+  const text=chunks.map(x=>x.replace(/\s+/g,' ').trim()).filter(x=>x.length>1).join('\n').trim();
+  if(text.length<8) throw new Error('No readable text layer found. This PDF may be scanned, encrypted, or use an encoded font; OCR needs an optional vision/OCR connector.');
+  return text;
+}
+async function handleFile(e){
+  const f=e.target.files&&e.target.files[0]; if(!f)return;
+  $('uploadStatus').textContent='Reading '+f.name+'…';
+  $('imagePreview').style.display='none';
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  try{
+    let text='';
+    if(['txt','md','csv','json'].includes(ext)||f.type.startsWith('text/')){
+      text=await f.text();
+    }else if(ext==='docx'){
+      text=await extractDocx(await f.arrayBuffer());
+    }else if(ext==='pdf'){
+      text=await extractPdf(await f.arrayBuffer());
+    }else if(f.type.startsWith('image/')||['jpg','jpeg','png','webp','heic','heif'].includes(ext)){
+      await handleImage({target:{files:[f]}});
+      return;
+    }else{
+      throw new Error('This file type is not yet supported for local text extraction.');
+    }
+    $('draft').value=String(text||'');
+    $('projectName').value=$('projectName').value||f.name.replace(/\.[^.]+$/,'');
+    $('uploadStatus').textContent='Loaded '+f.name+' successfully • '+words(text).length+' words extracted.';
+    onDraftChange();
+  }catch(err){
+    $('uploadStatus').textContent='Upload worked, but text extraction could not finish: '+(err.message||err)+'. You can still paste text, or use an optional OCR/AI connector for scanned documents.';
+  }finally{
+    try{e.target.value=''}catch(_){}
+  }
+}
+async function handleImage(e){
+  const f=e.target.files&&e.target.files[0]; if(!f)return;
+  const img=$('imagePreview');
+  try{
+    img.src=URL.createObjectURL(f);img.style.display='block';
+    img.onload=()=>{setTimeout(()=>URL.revokeObjectURL(img.src),5000)};
+  }catch(_){}
+  $('uploadStatus').textContent='Photo attached successfully: '+f.name+' ('+Math.round(f.size/1024)+' KB). Image upload/preview works locally. OCR is optional because browsers do not provide a reliable built-in text-recognition API.';
+}
+
+function analyze(){
+  const t=$('draft').value; if(words(t).length<8){alert('Add a little more text first.');return}
+  const ss=sents(t), lens=ss.map(x=>words(x).length), avg=lens.reduce((a,b)=>a+b,0)/lens.length;
+  const sd=Math.sqrt(lens.reduce((a,b)=>a+(b-avg)*(b-avg),0)/lens.length);
+  const cv=avg?sd/avg:0;
+  const markers=['delve','robust','furthermore','moreover','multifaceted','pivotal','seamless','landscape','in conclusion','it is important to note'];
+  const low=t.toLowerCase(); let hits=markers.reduce((n,m)=>n+(low.includes(m)?1:0),0);
+  const score=Math.max(3,Math.min(97,Math.round(62-(cv*48)+hits*8)));
+  $('signalMetric').textContent=score;
+  $('scoreBig').textContent=score+' / 100';
+  $('bandText').textContent=score<35?'Mostly human-typical pattern signals.':score<65?'Mixed pattern signals.':'Strongly uniform/model-typical patterns. This is not proof of authorship.';
+  $('sentenceMap').innerHTML='';
+  ss.forEach((s,i)=>{const d=document.createElement('div');d.className='item';d.innerHTML='<strong>Sentence '+(i+1)+'</strong><div class="small">'+words(s).length+' words</div><div>'+esc(s)+'</div>';$('sentenceMap').append(d)});
+  showTab('analysis')
+}
+
+function cleanupCommon(t){
+  return t.replace(/\s+/g,' ').replace(/\s+([,.!?;:])/g,'$1').replace(/([!?])([A-Za-z])/g,'$1 $2').replace(/\.([A-Z])/g,'. $1').trim()
+}
+function rewrite(mode){
+  let t=cleanupCommon($('draft').value); if(!t){$('rewriteResult').textContent='Add text first.';return}
+  if(mode==='concise')t=t.replace(/\b(very|really|basically|actually|just|quite|rather)\b\s*/gi,'').replace(/\bin order to\b/gi,'to').replace(/\bdue to the fact that\b/gi,'because');
+  if(mode==='direct')t=t.replace(/\bIt is important to note that\s*/gi,'').replace(/\bThere are\b/gi,'').replace(/\bThere is\b/gi,'');
+  if(mode==='clear')t=t.replace(/;/g,'.').replace(/\bhowever,\s*/gi,'But ').replace(/\btherefore,\s*/gi,'So ');
+  if(mode==='academic')t=t.replace(/\ba lot of\b/gi,'many').replace(/\bthings\b/gi,'factors').replace(/\bget\b/gi,'obtain');
+  if(mode==='natural')t=t.replace(/\bFurthermore,\s*/gi,'Also, ').replace(/\bMoreover,\s*/gi,'Also, ').replace(/\bIn conclusion,\s*/gi,'Overall, ');
+  rewriteBuffer=cleanupCommon(t);$('rewriteResult').textContent=rewriteBuffer;showTab('rewrite')
+}
+function grammarFix(){
+  let t=cleanupCommon($('draft').value)
+    .replace(/\bi\b/g,'I').replace(/\bim\b/gi,"I'm").replace(/\bdont\b/gi,"don't").replace(/\bcant\b/gi,"can't")
+    .replace(/\bwont\b/gi,"won't").replace(/\bdoesnt\b/gi,"doesn't");
+  t=t.replace(/(^|[.!?]\s+)([a-z])/g,(m,p,c)=>p+c.toUpperCase());
+  rewriteBuffer=t;$('rewriteResult').textContent=t;showTab('rewrite')
+}
+function applyRewrite(){if(!rewriteBuffer){alert('Create a revision first.');return}$('draft').value=rewriteBuffer;onDraftChange();showTab('draft')}
+
+function verifyCitations(){
+  const t=$('draft').value;
+  const urls=t.match(/https?:\/\/\S+/g)||[], doi=t.match(/\b10\.\d{4,9}\/[-._;()/:A-Z0-9]+\b/ig)||[], bracket=t.match(/\[[0-9]+\]/g)||[];
+  const numeric=(sents(t).filter(x=>/\b\d+(\.\d+)?%|\b\d{4}\b|\$\d+/.test(x)));
+  let out='Local citation structure check\n\nURLs found: '+urls.length+'\nDOIs found: '+doi.length+'\nBracket citations found: '+bracket.length+'\nPotential factual/numeric claims: '+numeric.length;
+  if(numeric.length&&!urls.length&&!doi.length&&!bracket.length)out+='\n\n⚠ Several factual claims appear to have no nearby citation structure.';
+  $('citationResult').textContent=out
+}
+function checkClaims(){
+  const risky=sents($('draft').value).filter(x=>/\b(always|never|proves|causes|guarantees|all|none|most|studies show|research shows|\d+%|\$\d+|\b20\d{2}\b)\b/i.test(x));
+  $('claimResult').textContent=risky.length?'Claims worth checking against sources:\n\n'+risky.map((x,i)=>(i+1)+'. '+x).join('\n\n'):'No obvious high-risk unsupported claims found by the local screen.'
+}
+function filterTerms(){return $('wordFilter').value.split(',').map(x=>x.trim()).filter(Boolean)}
+function findFiltered(){
+  const t=$('draft').value.toLowerCase(), terms=filterTerms(); const found=terms.map(term=>[term,(t.match(new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'))||[]).length]).filter(x=>x[1]);
+  $('filterResult').textContent=found.length?found.map(x=>x[0]+' × '+x[1]).join('\n'):'No filtered words found.'
+}
+function removeFiltered(){
+  let t=$('draft').value;filterTerms().forEach(term=>{t=t.replace(new RegExp('\\b'+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','gi'),'')});
+  $('draft').value=cleanupCommon(t);onDraftChange();$('filterResult').textContent='Selected terms removed.'
+}
+function studyAssist(){
+  const q=$('studyQuestion').value.trim();if(!q){$('studyResult').textContent='Add a question first.';return}
+  $('studyResult').textContent='Local Study Assist\n\n1. What is the prompt asking you to do?\n'+q+'\n\n2. Identify the key terms or evidence you already have.\n3. Write your own answer in one sentence.\n4. Add supporting detail.\n5. Check whether every part of the prompt was answered.\n\nCloud AI is optional for deeper explanations; this local mode does not submit quizzes or graded work.'
+}
+function blobDownload(name,content,type='text/plain'){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)
+}
+function baseName(){return ($('projectName').value.trim()||'provenance-project').replace(/[^\w.-]+/g,'_')}
+function downloadText(ext){blobDownload(baseName()+'.'+ext,$('draft').value)}
+function downloadJSON(){blobDownload(baseName()+'.json',JSON.stringify({name:$('projectName').value,text:$('draft').value,exportedAt:new Date().toISOString()},null,2),'application/json')}
+function downloadCSV(){
+  const rows=sents($('draft').value).map((s,i)=>[i+1,s,words(s).length]);
+  const csv='Sentence,Text,Word Count\n'+rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
+  blobDownload(baseName()+'.csv',csv,'text/csv')
+}
+function crc32(bytes){
+  let c=0xffffffff;
+  for(const b of bytes){c^=b;for(let k=0;k<8;k++)c=(c>>>1)^((c&1)?0xedb88320:0)}
+  return (c^0xffffffff)>>>0
+}
+function le16(n){return new Uint8Array([n&255,(n>>>8)&255])}
+function le32(n){return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255])}
+function concatBytes(parts){
+  const len=parts.reduce((n,p)=>n+p.length,0), out=new Uint8Array(len);let o=0;
+  for(const p of parts){out.set(p,o);o+=p.length}return out
+}
+function zipStore(entries){
+  const enc=new TextEncoder(), locals=[], centrals=[];let offset=0;
+  for(const [name,content] of entries){
+    const n=enc.encode(name), data=content instanceof Uint8Array?content:enc.encode(content), crc=crc32(data);
+    const local=concatBytes([le32(0x04034b50),le16(20),le16(0),le16(0),le16(0),le16(0),le32(crc),le32(data.length),le32(data.length),le16(n.length),le16(0),n,data]);
+    locals.push(local);
+    centrals.push(concatBytes([le32(0x02014b50),le16(20),le16(20),le16(0),le16(0),le16(0),le16(0),le32(crc),le32(data.length),le32(data.length),le16(n.length),le16(0),le16(0),le16(0),le16(0),le32(0),le32(offset),n]));
+    offset+=local.length;
+  }
+  const cd=concatBytes(centrals), body=concatBytes(locals);
+  const end=concatBytes([le32(0x06054b50),le16(0),le16(0),le16(entries.length),le16(entries.length),le32(cd.length),le32(body.length),le16(0)]);
+  return concatBytes([body,cd,end])
+}
+function xmlEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function makeXLSX(){
+  const rows=[['Sentence','Text','Word Count'],...sents($('draft').value).map((s,i)=>[String(i+1),s,String(words(s).length)])];
+  const sheetRows=rows.map((r,ri)=>'<row r="'+(ri+1)+'">'+r.map((v,ci)=>{const col=String.fromCharCode(65+ci);return '<c r="'+col+(ri+1)+'" t="inlineStr"><is><t>'+xmlEsc(v)+'</t></is></c>'}).join('')+'</row>').join('');
+  const entries=[
+    ['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'],
+    ['_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Analysis" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+    ['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'],
+    ['xl/worksheets/sheet1.xml','<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'+sheetRows+'</sheetData></worksheet>']
+  ];
+  return zipStore(entries)
+}
+function downloadXLSX(){
+  const bytes=makeXLSX();blobDownload(baseName()+'.xlsx',bytes,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+}
+function openNativeFilePicker(){$('fileInput').click()}
+async function shareProjectFile(){
+  const name=baseName()+'.txt', file=new File([$('draft').value],name,{type:'text/plain'});
+  if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+    try{await navigator.share({title:$('projectName').value||'Provenance project',files:[file]});return}catch(e){if(e&&e.name==='AbortError')return}
+  }
+  blobDownload(name,$('draft').value,'text/plain');
+  alert('Your browser did not expose file sharing here, so the project was downloaded instead.')
+}
+async function copyDraft(){try{await navigator.clipboard.writeText($('draft').value);alert('Copied.')}catch(e){alert('Copy is not available in this browser. Select the text manually.')}}
+async function shareDraft(){if(navigator.share){try{await navigator.share({title:$('projectName').value||'Provenance draft',text:$('draft').value})}catch(e){}}else copyDraft()}
+
+function runSelfTest(){
+  const tests=[];
+  function t(name,fn){try{const ok=fn();tests.push([name,!!ok,ok===true?'Passed':String(ok||'Failed')])}catch(e){tests.push([name,false,e.message])}}
+  t('Interactive JavaScript runtime',()=>typeof showTab==='function');
+  t('Local storage',()=>{localStorage.setItem('__pvtest','1');const ok=localStorage.getItem('__pvtest')==='1';localStorage.removeItem('__pvtest');return ok});
+  t('All button handlers exist',()=>{
+    const names=[...document.querySelectorAll('button[onclick]')].map(b=>(b.getAttribute('onclick').match(/^([A-Za-z_$][\w$]*)/)||[])[1]).filter(Boolean);
+    return names.every(n=>typeof window[n]==='function');
+  });
+  t('File input present',()=>!!$('fileInput'));
+  t('Camera input present',()=>!!$('cameraInput'));
+  t('TXT/MD/CSV/JSON parser',()=>typeof handleFile==='function');
+  t('DOCX local parser',()=>typeof extractDocx==='function'&&'DecompressionStream' in window);
+  t('PDF text-layer parser',()=>typeof extractPdf==='function');
+  t('Image preview handler',()=>typeof handleImage==='function');
+  t('Project save engine',()=>Array.isArray(getProjects()));
+  t('Text analysis engine',()=>typeof analyze==='function');
+  t('Rewrite engine',()=>typeof rewrite==='function');
+  t('Grammar tool',()=>typeof grammarFix==='function');
+  t('Citation verifier',()=>typeof verifyCitations==='function');
+  t('Claim checker',()=>typeof checkClaims==='function');
+  t('Word filter',()=>typeof findFiltered==='function'&&typeof removeFiltered==='function');
+  t('Study Assist',()=>typeof studyAssist==='function');
+  t('TXT/MD/JSON/CSV export',()=>typeof blobDownload==='function'&&typeof downloadJSON==='function'&&typeof downloadCSV==='function');
+  t('XLSX export engine',()=>typeof makeXLSX==='function'&&makeXLSX().length>500);
+  t('Native file/share bridge',()=>typeof openNativeFilePicker==='function'&&typeof shareProjectFile==='function');
+  t('Web Share support',()=>navigator.share?'Available':'Optional — download fallback active');
+  const out=$('testResults');out.innerHTML='';
+  tests.forEach(x=>{const d=document.createElement('div');d.className='testline';d.innerHTML='<span>'+esc(x[0])+'</span><strong class="'+(x[1]?'good':'bad')+'">'+(x[1]?'PASS':'FAIL')+'</strong>';out.append(d)});
+  showTab('diagnostics')
+}
+function interactiveBoot(){
+  const w=$('runtimeWarning');if(w)w.style.display='none';
+  loadCurrent();
+}
+window.addEventListener('load',interactiveBoot);
+</script>
+
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
