@@ -329,11 +329,11 @@ input[type="range"]{padding:0;background:transparent;border:0}
     </div>
 
     <div class="panel" id="panel-diagnostics">
-      <div class="toolbar"><button class="primary" onclick="runSelfTest()">Run health checks</button><button onclick="runDeepQA()">Run deep QA</button></div>
+      <div class="toolbar"><button class="primary" onclick="runSelfTest()">Run health checks</button><button onclick="runDeepQA()">Run deep QA</button><button onclick="openLiveSmokeTest()">Open live smoke test</button></div>
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v2.5 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v2.6 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
@@ -878,6 +878,7 @@ async function shareProjectFile(){
 async function copyDraft(){try{await navigator.clipboard.writeText($('draft').value);alert('Copied.')}catch(e){alert('Copy is not available in this browser. Select the text manually.')}}
 async function shareDraft(){if(navigator.share){try{await navigator.share({title:$('projectName').value||'Provenance draft',text:$('draft').value})}catch(e){}}else copyDraft()}
 
+function openLiveSmokeTest(){window.open('./test/smoke.html','_blank')}
 function runDeepQA(){
   const results=[];
   function add(name,ok,detail){results.push([name,!!ok,detail||''])}
@@ -949,7 +950,7 @@ function interactiveBoot(){
   try{
     loadCurrent();
     const w=$('runtimeWarning');if(w)w.style.display='none';
-    notice('Ready • Version 2.5 • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);
+    notice('Ready • Version 2.6 • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);
   }catch(err){
     const w=$('runtimeWarning');
     if(w){w.style.display='block';w.textContent='Startup recovered with an error: '+((err&&err.message)||err)+'. Reload once, then run health checks.'}
@@ -962,7 +963,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.5',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.6',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
 }
 </script>
 </body>
