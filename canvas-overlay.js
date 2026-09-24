@@ -110,7 +110,7 @@
   }
   function pageContext(questionNodes){
     const clone=document.body.cloneNode(true);
-    const overlay=clone.querySelector('#'+OVERLAY_ID);if(overlay)overlay.remove();
+    clone.querySelectorAll('[data-provenance-lens],#'+OVERLAY_ID).forEach(n=>n.remove());
     clone.querySelectorAll('script,style,nav,header,footer,button,input,textarea,select,[role="radio"],[role="checkbox"]').forEach(n=>n.remove());
     let text=norm(clone.innerText);
     questionNodes.forEach(q=>{const t=norm(q.innerText);if(t&&t.length<5000)text=text.replace(t,' ')});
@@ -175,48 +175,65 @@
   }
 
   const root=document.createElement('div');root.id=OVERLAY_ID;
-  root.style.cssText='position:fixed;right:14px;bottom:14px;width:min(410px,calc(100vw - 28px));max-height:78vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.5);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto;isolation:isolate;-webkit-transform:translateZ(0);';
-  root.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#171d2a;border-bottom:1px solid #2a3244"><strong>Provenance Canvas Lens</strong><div><button type="button" data-a="scan">Scan</button><button type="button" data-a="close" aria-label="Close Canvas Lens">×</button></div></div><div data-body style="padding:12px;overflow:auto;max-height:calc(78vh - 54px)"></div>';
-  root.querySelectorAll('button').forEach(b=>b.style.cssText='margin-left:6px;border:1px solid #3a455e;border-radius:10px;background:#222b3e;color:#fff;padding:7px 10px;font-weight:700;touch-action:manipulation');
+  root.setAttribute('data-provenance-lens','true');
+  root.style.cssText='position:fixed;right:10px;bottom:10px;width:min(390px,calc(100vw - 20px));max-height:74vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.5);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto;isolation:isolate;-webkit-transform:translateZ(0);transition:width .15s ease,box-shadow .15s ease;';
+  root.innerHTML='<div data-head style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;background:#171d2a;border-bottom:1px solid #2a3244"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="width:8px;height:8px;border-radius:50%;background:#63e6be;box-shadow:0 0 12px #63e6be"></span><strong style="white-space:nowrap">Canvas Lens</strong><span data-count style="font-size:11px;color:#aeb8cb;white-space:nowrap"></span></div><div style="display:flex;gap:5px"><button type="button" data-a="scan" aria-label="Rescan Canvas page">Scan</button><button type="button" data-a="toggle" aria-label="Minimize Canvas Lens">−</button><button type="button" data-a="close" aria-label="Close Canvas Lens">×</button></div></div><div data-body style="padding:10px;overflow:auto;max-height:calc(74vh - 50px)"></div>';
+  root.querySelectorAll('button').forEach(b=>b.style.cssText='margin:0;border:1px solid #3a455e;border-radius:9px;background:#222b3e;color:#fff;padding:6px 8px;font-size:12px;font-weight:700;touch-action:manipulation');
   document.documentElement.appendChild(root);
   root.addEventListener('pointerdown',e=>e.stopPropagation());
   root.addEventListener('click',e=>e.stopPropagation());
   root.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
-  const body=root.querySelector('[data-body]');
-  let lastSignature='';
-
+  const body=root.querySelector('[data-body]'),countEl=root.querySelector('[data-count]'),toggle=root.querySelector('[data-a="toggle"]');
+  let lastSignature='',collapsed=false,hoverPeek=false;
+  function setExpanded(expanded,temporary=false){
+    body.style.display=expanded?'block':'none';
+    root.style.width=expanded?'min(390px,calc(100vw - 20px))':'156px';
+    root.style.boxShadow=expanded?'0 22px 60px rgba(0,0,0,.5)':'0 10px 30px rgba(0,0,0,.35)';
+    toggle.textContent=expanded?'−':'+';
+    toggle.setAttribute('aria-label',expanded?'Minimize Canvas Lens':'Expand Canvas Lens');
+    if(!temporary)collapsed=!expanded;
+  }
+  function evidenceDetails(response){
+    const details=document.createElement('details');details.style.cssText='margin-top:8px;border-top:1px solid #263147;padding-top:7px';
+    const summary=document.createElement('summary');summary.textContent='Evidence';summary.style.cssText='cursor:pointer;color:#cbd5e1;font-size:12px;font-weight:700';
+    details.appendChild(summary);
+    const ev=document.createElement('div');ev.style.cssText='margin-top:7px;color:#aeb8cb;font-size:12px;line-height:1.4;white-space:pre-wrap';
+    ev.textContent=response.evidence&&response.evidence.length?response.evidence.map((x,i)=>(i+1)+'. '+x.text).join('\n'):'No supporting page context was found.';
+    details.appendChild(ev);return details;
+  }
   function render(force=false){
     const capture=scan(),p=capture.payload;
     const sig=JSON.stringify(p.items.map(x=>[x.question,x.options.map(o=>o.text)]));
     if(!force&&sig===lastSignature)return;
     lastSignature=sig;body.innerHTML='';
-    const meta=document.createElement('div');meta.style.cssText='font-size:12px;color:#aeb8cb;margin-bottom:10px';
-    meta.textContent=p.items.length?p.items.length+' question block'+(p.items.length===1?'':'s')+' detected':'No standard Canvas question blocks detected';
-    if(p.meta.frame==='top'&&p.meta.iframeCount)meta.textContent+=' • '+p.meta.iframeCount+' embedded frame'+(p.meta.iframeCount===1?'':'s')+' present';
+    countEl.textContent=p.items.length?'• '+p.items.length:'';
+    const meta=document.createElement('div');meta.style.cssText='font-size:11px;color:#aeb8cb;margin-bottom:8px';
+    meta.textContent=p.items.length?'Inline review • no app switching required':'No standard Canvas question blocks detected';
+    if(p.meta.frame==='top'&&p.meta.iframeCount)meta.textContent+=' • '+p.meta.iframeCount+' frame'+(p.meta.iframeCount===1?'':'s');
     body.appendChild(meta);
     if(!p.items.length){
-      const fallback=document.createElement('div');fallback.textContent='No question structure was detected. You can still send the visible page text for review.';
-      const b=document.createElement('button');b.type='button';b.textContent='Analyze visible page';b.style.cssText='margin-top:10px;border:0;border-radius:10px;background:#806fff;color:#fff;padding:9px 11px;font-weight:800';
-      b.onclick=()=>{const c=scan();c.payload.items=[{index:1,question:norm(document.body.innerText).slice(0,7000),options:[],openResponse:true}];sendToApp(c)};
-      body.append(fallback,b);return;
+      const fallback=document.createElement('div');fallback.style.cssText='padding:10px;border-radius:12px;background:#0c1119;border:1px solid #2a3346';
+      fallback.textContent='Lens could not isolate a question on this view. Scroll to a visible question and tap Scan.';
+      body.appendChild(fallback);return;
     }
     p.items.forEach((item,idx)=>{
-      const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:14px;padding:11px;margin:10px 0;background:#0c1119';
-      const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35';q.textContent=(idx+1)+'. '+item.question.slice(0,650);box.appendChild(q);
-      if(item.options.length){
-        const choices=document.createElement('div');choices.style.cssText='margin-top:7px;color:#cbd5e1;font-size:12px';
-        choices.textContent=item.options.map(o=>o.label+'. '+o.text).join(' • ');box.appendChild(choices);
-      }
+      const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:14px;padding:10px;margin:8px 0;background:#0c1119';
+      const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35;font-size:13px';q.textContent=(idx+1)+'. '+item.question.slice(0,500);box.appendChild(q);
       const response=localResponse(item,p.context);
-      const r=document.createElement('div');r.style.cssText='margin-top:9px;padding:9px;border-radius:10px;background:#141c29;white-space:pre-wrap;line-height:1.4';
-      r.innerHTML='<strong>Response builder</strong><div style="margin-top:5px">'+esc(response.headline)+'</div><div style="margin-top:5px;color:#aeb8cb;font-size:12px">'+esc(response.detail)+'</div>';box.appendChild(r);
-      const bar=document.createElement('div');bar.style.cssText='display:flex;gap:7px;margin-top:9px;flex-wrap:wrap';
-      const open=document.createElement('button');open.type='button';open.textContent='Open deeper review';open.style.cssText='border:0;border-radius:10px;background:#806fff;color:#fff;padding:8px 10px;font-weight:800;touch-action:manipulation';open.onclick=()=>sendToApp(capture,item);
-      const approve=document.createElement('button');approve.type='button';approve.textContent='Approve';approve.style.cssText='border:1px solid #3a455e;border-radius:10px;background:#1d2637;color:#fff;padding:8px 10px;font-weight:800;touch-action:manipulation';approve.onclick=()=>{box.style.borderColor='#4cbf9f';approve.textContent='Approved';approve.disabled=true};
-      bar.append(open,approve);box.appendChild(bar);body.appendChild(box);
+      const answer=document.createElement('div');answer.style.cssText='margin-top:8px;padding:9px;border-radius:10px;background:#141c29;line-height:1.4';
+      const title=document.createElement('div');title.style.cssText='font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#63e6be;font-weight:800';title.textContent='Lens review';
+      const headline=document.createElement('div');headline.style.cssText='margin-top:5px;font-weight:800';headline.textContent=response.headline;
+      const detail=document.createElement('div');detail.style.cssText='margin-top:5px;color:#aeb8cb;font-size:12px';detail.textContent=response.detail;
+      answer.append(title,headline,detail,evidenceDetails(response));box.appendChild(answer);
+      const bar=document.createElement('div');bar.style.cssText='display:flex;gap:7px;margin-top:8px;flex-wrap:wrap';
+      const reviewed=document.createElement('button');reviewed.type='button';reviewed.textContent='Mark reviewed';reviewed.style.cssText='border:1px solid #3a455e;border-radius:9px;background:#1d2637;color:#fff;padding:7px 9px;font-size:12px;font-weight:800;touch-action:manipulation';
+      reviewed.onclick=()=>{box.style.borderColor='#4cbf9f';reviewed.textContent='Reviewed';reviewed.disabled=true};
+      bar.append(reviewed);box.appendChild(bar);body.appendChild(box);
     });
-    const all=document.createElement('button');all.type='button';all.textContent='Open all in Provenance';all.style.cssText='width:100%;margin-top:6px;border:0;border-radius:12px;background:#806fff;color:#fff;padding:10px;font-weight:800;touch-action:manipulation';all.onclick=()=>sendToApp(capture);body.appendChild(all);
   }
+  toggle.onclick=()=>setExpanded(collapsed);
+  root.addEventListener('mouseenter',()=>{if(collapsed){hoverPeek=true;setExpanded(true,true)}});
+  root.addEventListener('mouseleave',()=>{if(collapsed&&hoverPeek){hoverPeek=false;setExpanded(false,true)}});
 
   let timer=0;
   const observer=new MutationObserver(muts=>{

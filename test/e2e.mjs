@@ -100,6 +100,7 @@ pass('Canvas Lens detects classic Canvas-style questions',true);
 const demoText=await canvas.locator('#provenance-canvas-lens-v2').innerText();
 pass('Canvas Lens fixture evidence ranking favors Chlorophyll',demoText.includes('Best-supported page-context choice: B — Chlorophyll'));
 pass('Canvas Lens overlay shows no percentage scores',!/%/.test(demoText));
+pass('Canvas Lens renders inline review on Canvas',demoText.includes('Inline review'));
 
 await canvas.evaluate(()=>{
   const q=document.createElement('div');q.className='question';q.dataset.questionId='3';
@@ -112,19 +113,18 @@ pass('Canvas Lens auto-rescans dynamically loaded questions',true);
 const selected=await canvas.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
 pass('Canvas Lens never auto-selects answers',selected===0,selected+' selected controls');
 
-const popupPromise=context.waitForEvent('page');
-await canvas.getByRole('button',{name:'Open all in Provenance'}).click();
-const popup=await popupPromise;
-await popup.waitForLoadState('domcontentloaded');
-await popup.waitForFunction(()=>document.getElementById('canvasBridgeStatus')?.textContent.includes('3 items received'),null,{timeout:10000});
-pass('Canvas live bridge sends page content without copy/paste',true);
-pass('Canvas review queue builds from overlay capture',(await popup.locator('#studyQueue .study-card').count())===3);
-pass('Canvas review queue shows no percentage scores',!/%/.test(await popup.locator('#studyQueue').innerText()));
-await popup.screenshot({path:'test/artifacts/canvas-review-mobile.png',fullPage:true});
+const canvasUrl=canvas.url(),pagesBefore=context.pages().length;
+pass('Canvas overlay has no app-switch buttons',(await canvas.getByRole('button',{name:/Open .*Provenance|Open deeper review/}).count())===0);
+await canvas.getByRole('button',{name:'Minimize Canvas Lens'}).click();
+pass('Canvas Lens minimizes inline',await canvas.locator('#provenance-canvas-lens-v2 [data-body]').isHidden());
+await canvas.locator('#provenance-canvas-lens-v2').hover();
+pass('Canvas Lens hover expands inline',await canvas.locator('#provenance-canvas-lens-v2 [data-body]').isVisible());
+await canvas.mouse.move(1,1);await canvas.waitForTimeout(100);
+pass('Canvas Lens returns to minimized dock',await canvas.locator('#provenance-canvas-lens-v2 [data-body]').isHidden());
+pass('Canvas Lens interactions stay on Canvas',canvas.url()===canvasUrl&&context.pages().length===pagesBefore);
 await canvas.screenshot({path:'test/artifacts/canvas-overlay-mobile.png',fullPage:true});
 finishCanvasErrors();
 
-await popup.close();
 await canvas.close();
 await browser.close();
 

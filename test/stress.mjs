@@ -207,13 +207,13 @@ async function canvasSuite(browserType,label,contextOptions){
     ok(label+' Canvas '+mode+' detection',text.includes(count+' question block'),text.split('\n')[0]);
     const selected=await page.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
     ok(label+' Canvas '+mode+' no auto-selection',selected===0,selected+' selected');
-    const ctx=await page.evaluate(()=>{const r=document.getElementById('provenance-canvas-lens-v2');return !!r&&r.getBoundingClientRect().width>0&&r.getBoundingClientRect().height>0&&r.innerText.includes('Response builder')});
+    const ctx=await page.evaluate(()=>{const r=document.getElementById('provenance-canvas-lens-v2');return !!r&&r.getBoundingClientRect().width>0&&r.getBoundingClientRect().height>0&&r.innerText.includes('Lens review')});
     ok(label+' Canvas '+mode+' overlay visible',ctx);
     if(mode==='classic'){
       await page.getByRole('button',{name:'Scan'}).click();
       ok(label+' Canvas Scan button works',(await page.locator('#provenance-canvas-lens-v2').innerText()).includes('2 question blocks'));
-      const approve=page.getByRole('button',{name:'Approve'}).first();await approve.click();
-      ok(label+' Canvas Approve button works',(await approve.textContent())==='Approved');
+      const reviewed=page.getByRole('button',{name:'Mark reviewed'}).first();await reviewed.click();
+      ok(label+' Canvas Mark reviewed works',(await reviewed.textContent())==='Reviewed');
     }
     if(mode==='observed'){
       const overlayText=await page.locator('#provenance-canvas-lens-v2').innerText();
@@ -245,14 +245,35 @@ async function canvasSuite(browserType,label,contextOptions){
   const transfer=await context.newPage();
   await transfer.goto(base+'test/canvas-compat.html?mode=mixed',{waitUntil:'networkidle'});
   await transfer.waitForFunction(()=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes('6 question blocks'));
-  const popupPromise=context.waitForEvent('page');
-  await transfer.getByRole('button',{name:'Open all in Provenance'}).click();
-  const popup=await popupPromise;
-  await popup.waitForLoadState('domcontentloaded');
-  await popup.waitForFunction(()=>document.getElementById('canvasBridgeStatus')?.textContent.includes('6 items received'),null,{timeout:10000});
-  ok(label+' Canvas no-copy page bridge',true);
-  ok(label+' Canvas review queue from page',(await popup.locator('#studyQueue .study-card').count())===6);
-  await popup.close();await transfer.close();await framePage.close();
+  const originalUrl=transfer.url(),pageCount=context.pages().length;
+  ok(label+' Canvas inline review stays on Canvas',(await transfer.locator('#provenance-canvas-lens-v2').innerText()).includes('Inline review'));
+  ok(label+' Canvas has no app-switch review buttons',(await transfer.getByRole('button',{name:/Open .*Provenance|Open deeper review/}).count())===0);
+  await transfer.getByRole('button',{name:'Minimize Canvas Lens'}).click();
+  ok(label+' Canvas dock minimizes',await transfer.locator('#provenance-canvas-lens-v2 [data-body]').isHidden());
+  await transfer.locator('#provenance-canvas-lens-v2').hover();
+  ok(label+' Canvas dock hover-peeks',await transfer.locator('#provenance-canvas-lens-v2 [data-body]').isVisible());
+  await transfer.mouse.move(1,1);
+  await transfer.waitForTimeout(100);
+  ok(label+' Canvas dock returns to minimized state',await transfer.locator('#provenance-canvas-lens-v2 [data-body]').isHidden());
+  ok(label+' Canvas inline review does not navigate',transfer.url()===originalUrl&&context.pages().length===pageCount,transfer.url());
+  await transfer.close();await framePage.close();
+
+  const app=await context.newPage();
+  await app.goto(base+'index.html',{waitUntil:'networkidle'});
+  const bookmarklet=await app.evaluate(()=>canvasBookmarklet());
+  await app.close();
+  const bm=await context.newPage();
+  await bm.goto(base+'test/canvas-compat.html?mode=observed',{waitUntil:'networkidle'});
+  const bmUrl=bm.url(),beforeSelected=await bm.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
+  await bm.evaluate(code=>(0,eval)(code.replace(/^javascript:/,'')),bookmarklet);
+  await bm.waitForSelector('#provenance-iphone-lens');
+  ok(label+' iPhone bookmarklet renders inline Lens',(await bm.locator('#provenance-iphone-lens').innerText()).includes('Canvas Lens'));
+  ok(label+' iPhone bookmarklet stays on Canvas',bm.url()===bmUrl,bm.url());
+  ok(label+' iPhone bookmarklet does not select answers',(await bm.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count())===beforeSelected);
+  await bm.getByRole('button',{name:'−'}).click();
+  ok(label+' iPhone Lens minimizes',await bm.locator('#provenance-iphone-lens [data-b]').isHidden());
+  await bm.close();
+
   await browser.close();
 }
 
