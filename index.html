@@ -873,11 +873,13 @@ function verifyCitations(){
   $('citationResult').textContent=out
 }
 function claimSentences(text){
-  const kept=[];
-  let t=String(text||'').replace(/\([^()\n]{0,220}\b(?:19|20)\d{2}[a-z]?[^()\n]{0,120}\)/gi,m=>{kept.push(m);return ' PVCITE'+(kept.length-1)+'TOKEN '});
-  const abbr=[];
-  t=t.replace(/\b(?:Inc|Corp|Co|Ltd|LLC|Dr|Mr|Ms|Prof|Sr|Jr|U\.S|e\.g|i\.e)\./gi,m=>{abbr.push(m);return ' PVABBR'+(abbr.length-1)+'TOKEN '});
-  return sents(t).map(s=>s.replace(/PVCITE(\d+)TOKEN/g,(_,i)=>kept[+i]).replace(/PVABBR(\d+)TOKEN/g,(_,i)=>abbr[+i]).replace(/\s+/g,' ').trim()).filter(Boolean)
+  const out=[];
+  String(text||'').replace(/\r/g,'').split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(line=>{
+    const kept=[];let t=line.replace(/\([^()]{0,260}\b(?:19|20)\d{2}[a-z]?[^()]{0,140}\)/gi,m=>{kept.push(m);return ' PVCITE'+(kept.length-1)+'TOKEN '});
+    const abbr=[];t=t.replace(/\b(?:Inc|Corp|Co|Ltd|LLC|Dr|Mr|Ms|Prof|Sr|Jr|U\.S|e\.g|i\.e)\./gi,m=>{abbr.push(m);return ' PVABBR'+(abbr.length-1)+'TOKEN '});
+    sents(t).forEach(s=>out.push(s.replace(/PVCITE(\d+)TOKEN/g,(_,i)=>kept[+i]).replace(/PVABBR(\d+)TOKEN/g,(_,i)=>abbr[+i]).replace(/\s+/g,' ').trim()))
+  });
+  return out.filter(Boolean)
 }
 function checkClaims(){
   const trigger=/\b(always|never|proves|causes|guarantees|all|none|most|studies show|research shows|more than|around|approximately|average|valued|grew|operates|serves|\d+(?:\.\d+)?%|\$\d+|\b(?:19|20)\d{2}\b)\b/i;

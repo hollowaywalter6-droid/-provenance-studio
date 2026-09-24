@@ -52,7 +52,8 @@ async function appSuite(browserType,label,contextOptions){
   await page.getByRole('button',{name:'Analyze writing'}).click();
   ok(label+' analysis metrics',(await page.locator('#scoreBig').textContent())?.includes('/ 100'));
   const claimParts=await page.evaluate(()=>claimSentences('Wendy Bracken September 23, 2026 Uber Technologies, Inc.\nCurrently, Uber operates in more than 70 countries (Uber Technologies, Inc., 2026).'));
-  ok(label+' claim parser keeps parenthetical citation intact',claimParts.some(x=>x.includes('(Uber Technologies, Inc., 2026).')));
+  ok(label+' claim parser keeps parenthetical citation intact',claimParts.length===2&&claimParts[1].includes('(Uber Technologies, Inc., 2026).'),claimParts.join(' || '));
+  await page.locator('.tab[data-tab="draft"]').click();
   await page.locator('#draft').fill(Array.from({length:18},(_,i)=>'Sentence '+(i+1)+' has enough words to exercise the compact sentence map.').join(' '));
   await page.getByRole('button',{name:'Analyze writing'}).click();
   ok(label+' sentence map starts compact',(await page.locator('#sentenceMap .item').count())===10);
