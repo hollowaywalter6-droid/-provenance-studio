@@ -334,7 +334,7 @@ input[type="range"]{padding:0;background:transparent;border:0}
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v3.0 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v3.0.1 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
@@ -515,7 +515,11 @@ async function extractPdfWithPdfJs(arrayBuffer,onProgress){
 }
 async function loadTesseract(){
   if(tesseractPromise)return tesseractPromise;
-  tesseractPromise=import(TESSERACT_URL).catch(err=>{tesseractPromise=null;throw new Error('OCR engine could not load: '+((err&&err.message)||err))});
+  tesseractPromise=import(TESSERACT_URL).then(mod=>{
+    const api=(mod&&typeof mod.createWorker==='function')?mod:(mod&&mod.default&&typeof mod.default.createWorker==='function'?mod.default:null);
+    if(!api)throw new Error('OCR module loaded without createWorker().');
+    return api;
+  }).catch(err=>{tesseractPromise=null;throw new Error('OCR engine could not load: '+((err&&err.message)||err))});
   return tesseractPromise;
 }
 async function ocrPdf(arrayBuffer,onProgress){
@@ -1119,7 +1123,7 @@ function interactiveBoot(){
   try{
     loadCurrent();
     const w=$('runtimeWarning');if(w)w.style.display='none';
-    notice('Ready • Version 3.0 • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);
+    notice('Ready • Version 3.0.1 • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);
   }catch(err){
     const w=$('runtimeWarning');
     if(w){w.style.display='block';w.textContent='Startup recovered with an error: '+((err&&err.message)||err)+'. Reload once, then run health checks.'}
@@ -1132,7 +1136,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && window.isSecureContext) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=3.0',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=3.0.1',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
 }
 </script>
 </body>
