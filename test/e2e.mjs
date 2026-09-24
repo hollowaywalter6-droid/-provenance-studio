@@ -31,7 +31,7 @@ async function appRun(name,viewport){
   for(const tab of tabs){
     await page.locator('.tab[data-tab="'+tab+'"]').click();
     pass(name+' panel '+tab+' renders',await page.locator('#panel-'+tab).isVisible());
-    const dims=await page.locator('#panel-'+tab+' button').evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return [r.width,r.height]}));
+    const dims=await page.locator('#panel-'+tab+' button').evaluateAll(bs=>bs.filter(b=>{const s=getComputedStyle(b);return s.display!=='none'&&s.visibility!=='hidden'}).map(b=>{const r=b.getBoundingClientRect();return [r.width,r.height]}));
     controls+=dims.length;zero+=dims.filter(([w,h])=>w===0||h===0).length;
   }
   pass(name+' all visible-panel buttons have geometry',zero===0,controls+' buttons checked');
@@ -67,6 +67,13 @@ async function appRun(name,viewport){
   await page.locator('.tab[data-tab="connectors"]').click();
   pass(name+' connector controls render',await page.getByRole('button',{name:'Import a document'}).isVisible()&&await page.getByRole('button',{name:'Save/share project file'}).isVisible());
 
+  await page.locator('.tab[data-tab="canvas"]').click();
+  await page.getByRole('button',{name:'Show setup steps'}).click();
+  pass(name+' Canvas setup renders',await page.locator('#canvasSetup').isVisible());
+  pass(name+' Canvas bookmarklet code is available',(await page.locator('#canvasBookmarkletCode').inputValue()).startsWith('javascript:'));
+  await page.evaluate(()=>copyCanvasBookmarklet());
+  pass(name+' Canvas copy fallback remains usable',await page.locator('#canvasBookmarkletCode').isVisible());
+
   await page.locator('.tab[data-tab="diagnostics"]').click();
   await page.getByRole('button',{name:'Run health checks'}).click();
   let bad=await page.locator('#testResults .bad').count();
@@ -90,6 +97,8 @@ await canvas.goto(base+'test/canvas-fixture.html',{waitUntil:'networkidle'});
 await canvas.waitForSelector('#provenance-canvas-lens-v2');
 await canvas.waitForFunction(()=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes('2 question blocks detected'));
 pass('Canvas Lens detects classic Canvas-style questions',true);
+const demoText=await canvas.locator('#provenance-canvas-lens-v2').innerText();
+pass('Canvas Lens fixture evidence ranking favors Chlorophyll',demoText.includes('Top page-context match: B — Chlorophyll'));
 
 await canvas.evaluate(()=>{
   const q=document.createElement('div');q.className='question';q.dataset.questionId='3';

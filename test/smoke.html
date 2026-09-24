@@ -28,7 +28,7 @@ frame.addEventListener('load',()=>setTimeout(()=>{
   }catch(e){all=row('Button handlers resolve',false,e.message)&&all}
   try{
     const tabs=[...d.querySelectorAll('.tab')],original=d.querySelector('.tab.active')?.dataset.tab||'draft';let total=0,bad=0;
-    tabs.forEach(t=>{w.showTab(t.dataset.tab);[...d.getElementById('panel-'+t.dataset.tab).querySelectorAll('button')].forEach(b=>{total++;const r=b.getBoundingClientRect();if(r.width===0||r.height===0)bad++})});
+    tabs.forEach(t=>{w.showTab(t.dataset.tab);[...d.getElementById('panel-'+t.dataset.tab).querySelectorAll('button')].forEach(b=>{const s=getComputedStyle(b);if(s.display==='none'||s.visibility==='hidden')return;total++;const r=b.getBoundingClientRect();if(r.width===0||r.height===0)bad++})});
     w.showTab(original);
     all=row('Button geometry across every panel',bad===0,bad?bad+' controls had zero geometry':total+' visible-panel buttons measured')&&all;
   }catch(e){all=row('Button geometry across every panel',false,e.message)&&all}

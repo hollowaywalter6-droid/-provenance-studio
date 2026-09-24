@@ -94,6 +94,11 @@ async function appSuite(browserType,label,contextOptions){
   ok(label+' Canvas payload item cap',capped.items.length===100);
   ok(label+' Canvas payload option cap',capped.items[0].options.length===20);
   ok(label+' Canvas payload context cap',capped.context.length===50000);
+  await page.getByRole('button',{name:'Show setup steps'}).click();
+  ok(label+' Canvas setup steps visible',await page.locator('#canvasSetup').isVisible());
+  ok(label+' iPhone Lens code field',(await page.locator('#canvasBookmarkletCode').inputValue()).startsWith('javascript:'));
+  await page.evaluate(()=>copyCanvasBookmarklet());
+  ok(label+' bookmarklet manual fallback UI',await page.locator('#canvasBookmarkletCode').isVisible());
 
   await page.locator('.tab[data-tab="projects"]').click();
   for(let i=0;i<30;i++){
@@ -150,7 +155,6 @@ async function appSuite(browserType,label,contextOptions){
   ok(label+' image preview',true);
 
   await page.locator('.tab[data-tab="draft"]').click();
-  await page.locator('.tab[data-tab="draft"]').click();
   await page.locator('#draft').fill('Export sentence one. Export sentence two has more words.');
   await page.locator('.tab[data-tab="export"]').click();
   for(const name of ['Download TXT','Download Markdown','Download JSON','Download CSV','Download XLSX']){
@@ -177,8 +181,12 @@ async function appSuite(browserType,label,contextOptions){
   ok(label+' large-text analysis stress',perf.analysis<5000,perf.analysis.toFixed(0)+' ms');
   ok(label+' large-text rewrite stress',perf.rewrite<5000,perf.rewrite.toFixed(0)+' ms');
 
-  const sw=await page.evaluate(async()=>('serviceWorker' in navigator)?!!(await navigator.serviceWorker.getRegistration()):true);
-  ok(label+' service worker registration',sw);
+  const swStatus=await page.evaluate(async()=>{
+    if(!('serviceWorker' in navigator))return {ok:true,detail:'unsupported'};
+    let reg=null;for(let i=0;i<40&&!reg;i++){reg=await navigator.serviceWorker.getRegistration();if(!reg)await new Promise(r=>setTimeout(r,100))}
+    return {ok:!!reg,detail:reg?'registered':'no registration'};
+  });
+  ok(label+' service worker registration',swStatus.ok,swStatus.detail);
 
   await page.screenshot({path:'test/artifacts/stress-'+label.replace(/\s+/g,'-')+'.png',fullPage:false});
   ok(label+' runtime console clean',runtime.length===0,runtime.join(' | '));
@@ -200,6 +208,12 @@ async function canvasSuite(browserType,label,contextOptions){
     ok(label+' Canvas '+mode+' no auto-selection',selected===0,selected+' selected');
     const ctx=await page.evaluate(()=>{const r=document.getElementById('provenance-canvas-lens-v2');return !!r&&r.getBoundingClientRect().width>0&&r.getBoundingClientRect().height>0&&r.innerText.includes('Response builder')});
     ok(label+' Canvas '+mode+' overlay visible',ctx);
+    if(mode==='classic'){
+      await page.getByRole('button',{name:'Scan'}).click();
+      ok(label+' Canvas Scan button works',(await page.locator('#provenance-canvas-lens-v2').innerText()).includes('2 question blocks'));
+      const approve=page.getByRole('button',{name:'Approve'}).first();await approve.click();
+      ok(label+' Canvas Approve button works',(await approve.textContent())==='Approved');
+    }
     await page.close();
   }
 
@@ -208,6 +222,8 @@ async function canvasSuite(browserType,label,contextOptions){
   await dynamic.waitForFunction(()=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes('1 question block'));
   await dynamic.waitForFunction(()=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes('2 question blocks'),null,{timeout:5000});
   ok(label+' Canvas dynamic auto-rescan',true);
+  await dynamic.getByRole('button',{name:'Close Canvas Lens'}).click();
+  ok(label+' Canvas Close button works',(await dynamic.locator('#provenance-canvas-lens-v2').count())===0);
   await dynamic.close();
 
   const framePage=await context.newPage();

@@ -108,54 +108,57 @@
     return String(context||'').split(/(?<=[.!?])\s+/).map(norm).filter(x=>x.length>20&&x.length<700)
       .map(s=>({text:s,score:overlap(q,s)})).sort((a,b)=>b.score-a.score).filter(x=>x.score>0).slice(0,4);
   }
+  function optionEvidenceScore(item,option,context){
+    const qWords=words(item.question).filter(w=>!['which','what','answer','option','choice','substance','item','during'].includes(w));
+    const optWords=words(option.text),sentences=String(context||'').split(/(?<=[.!?])\s+/).map(norm).filter(Boolean);
+    let best=0;
+    for(const sentence of sentences){
+      const tokens=words(sentence),low=sentence.toLowerCase(),opt=norm(option.text).toLowerCase();
+      const optPos=[];tokens.forEach((t,i)=>{if(optWords.includes(t))optPos.push(i)});
+      if(!optPos.length&&!low.includes(opt))continue;
+      const qPos=[];tokens.forEach((t,i)=>{if(qWords.includes(t)&&!optWords.includes(t))qPos.push(i)});
+      const distance=(optPos.length&&qPos.length)?Math.min(...optPos.flatMap(x=>qPos.map(y=>Math.abs(x-y)))):12;
+      const proximity=Math.max(0,100-distance*9),qMatch=overlap(item.question,sentence),exact=low.includes(opt)?100:overlap(option.text,sentence);
+      best=Math.max(best,Math.round(qMatch*.55+proximity*.30+exact*.15));
+    }
+    return best;
+  }
   function localResponse(item,context){
     const ev=topEvidence(item.question,context);
     if(item.options.length){
-      const base=item.question+' '+ev.map(x=>x.text).join(' ');
-      const ranked=item.options.map(o=>({...o,score:overlap(o.text,base)})).sort((a,b)=>b.score-a.score);
-      const best=ranked[0];
-      return {
-        headline:best&&best.score>0?'Top page-context match: '+best.label+' — '+best.text:'No reliable option match from visible page context.',
-        detail:best&&best.score>0?'Context overlap '+best.score+'%. Review the evidence before using it.':'Open the deeper review to inspect the captured context.',
-        evidence:ev
-      };
+      const ranked=item.options.map(o=>({...o,score:optionEvidenceScore(item,o,context)})).sort((x,y)=>y.score-x.score);
+      const best=ranked[0],second=ranked[1],clear=best&&best.score>=25&&(!second||best.score-second.score>=5);
+      return {headline:clear?'Top page-context match: '+best.label+' — '+best.text:'No single option is strongly supported by the visible page context.',detail:clear?'Evidence score '+best.score+'%. Review the page context before using it.':'Open the deeper review to inspect the evidence instead of relying on a weak tie.',evidence:ev};
     }
-    return {
-      headline:ev.length?'Response notes from this page':'No supporting context found on this page.',
-      detail:ev.length?ev.map(x=>'• '+x.text).join('\n'):'Open the deeper review and add notes or source material.',
-      evidence:ev
-    };
+    return {headline:ev.length?'Response notes from this page':'No supporting context found on this page.',detail:ev.length?ev.map(x=>'• '+x.text).join('\n'):'Open the deeper review and add notes or source material.',evidence:ev};
   }
-  function scan(){
-    const nodes=candidateRoots(),items=nodes.map(parseQuestion).filter(x=>x.question.length>2);
-    const iframeCount=[...document.querySelectorAll('iframe')].filter(visible).length;
-    return {
-      type:'PROVENANCE_CANVAS_CAPTURE',version:2,
-      payload:{
-        title:document.title,url:location.href,items,context:pageContext(nodes),
-        meta:{frame:window.top===window.self?'top':'embedded',iframeCount,capturedAt:new Date().toISOString()}
-      }
-    };
+  function compactPayload(capture,item){
+    const p=capture.payload||{},items=(item?[item]:(p.items||[])).slice(0,20).map((q,i)=>({
+      index:i+1,question:String(q.question||'').slice(0,900),
+      options:(q.options||[]).slice(0,12).map(o=>({label:String(o.label||'').slice(0,8),text:String(o.text||'').slice(0,500)})),
+      openResponse:!!q.openResponse
+    }));
+    return {title:String(p.title||'Canvas page').slice(0,300),url:String(p.url||location.href).slice(0,1500),context:String(p.context||'').slice(0,8000),items,meta:{...(p.meta||{}),bridge:'mobile-same-tab'}};
   }
   function sendToApp(capture,item){
     const data=typeof structuredClone==='function'?structuredClone(capture):JSON.parse(JSON.stringify(capture));
     if(item)data.payload.items=[item];
+    const iphone=/iPad|iPhone|iPod/i.test(navigator.userAgent);
+    if(iphone){location.href=APP_URL+'#canvas='+encodeURIComponent(JSON.stringify(compactPayload(capture,item)));return}
     const popup=window.open(APP_URL+'#canvas-ready','_blank');
-    if(!popup){alert('The browser blocked the Provenance window. Allow pop-ups for Canvas, then try again.');return}
-    let tries=0;
-    const target=new URL(APP_URL).origin;
-    const timer=setInterval(()=>{
-      tries++;
-      try{popup.postMessage(data,target)}catch(e){}
-      if(tries>=20)clearInterval(timer);
-    },250);
+    if(!popup){location.href=APP_URL+'#canvas='+encodeURIComponent(JSON.stringify(compactPayload(capture,item)));return}
+    let tries=0;const target=new URL(APP_URL).origin;
+    const timer=setInterval(()=>{tries++;try{popup.postMessage(data,target)}catch(e){}if(tries>=20)clearInterval(timer)},250);
   }
 
   const root=document.createElement('div');root.id=OVERLAY_ID;
-  root.style.cssText='position:fixed;right:14px;bottom:14px;width:min(410px,calc(100vw - 28px));max-height:78vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.5);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;';
-  root.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#171d2a;border-bottom:1px solid #2a3244"><strong>Provenance Canvas Lens</strong><div><button data-a="scan">Scan</button><button data-a="close" aria-label="Close Canvas Lens">×</button></div></div><div data-body style="padding:12px;overflow:auto;max-height:calc(78vh - 54px)"></div>';
+  root.style.cssText='position:fixed;right:14px;bottom:14px;width:min(410px,calc(100vw - 28px));max-height:78vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.5);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto;isolation:isolate;-webkit-transform:translateZ(0);';
+  root.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#171d2a;border-bottom:1px solid #2a3244"><strong>Provenance Canvas Lens</strong><div><button type="button" data-a="scan">Scan</button><button type="button" data-a="close" aria-label="Close Canvas Lens">×</button></div></div><div data-body style="padding:12px;overflow:auto;max-height:calc(78vh - 54px)"></div>';
   root.querySelectorAll('button').forEach(b=>b.style.cssText='margin-left:6px;border:1px solid #3a455e;border-radius:10px;background:#222b3e;color:#fff;padding:7px 10px;font-weight:700;touch-action:manipulation');
   document.documentElement.appendChild(root);
+  root.addEventListener('pointerdown',e=>e.stopPropagation());
+  root.addEventListener('click',e=>e.stopPropagation());
+  root.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
   const body=root.querySelector('[data-body]');
   let lastSignature='';
 
@@ -170,7 +173,7 @@
     body.appendChild(meta);
     if(!p.items.length){
       const fallback=document.createElement('div');fallback.textContent='No question structure was detected. You can still send the visible page text for review.';
-      const b=document.createElement('button');b.textContent='Analyze visible page';b.style.cssText='margin-top:10px;border:0;border-radius:10px;background:#806fff;color:#fff;padding:9px 11px;font-weight:800';
+      const b=document.createElement('button');b.type='button';b.textContent='Analyze visible page';b.style.cssText='margin-top:10px;border:0;border-radius:10px;background:#806fff;color:#fff;padding:9px 11px;font-weight:800';
       b.onclick=()=>{const c=scan();c.payload.items=[{index:1,question:norm(document.body.innerText).slice(0,7000),options:[],openResponse:true}];sendToApp(c)};
       body.append(fallback,b);return;
     }
@@ -185,11 +188,11 @@
       const r=document.createElement('div');r.style.cssText='margin-top:9px;padding:9px;border-radius:10px;background:#141c29;white-space:pre-wrap;line-height:1.4';
       r.innerHTML='<strong>Response builder</strong><div style="margin-top:5px">'+esc(response.headline)+'</div><div style="margin-top:5px;color:#aeb8cb;font-size:12px">'+esc(response.detail)+'</div>';box.appendChild(r);
       const bar=document.createElement('div');bar.style.cssText='display:flex;gap:7px;margin-top:9px;flex-wrap:wrap';
-      const open=document.createElement('button');open.textContent='Open deeper review';open.style.cssText='border:0;border-radius:10px;background:#806fff;color:#fff;padding:8px 10px;font-weight:800;touch-action:manipulation';open.onclick=()=>sendToApp(capture,item);
-      const approve=document.createElement('button');approve.textContent='Approve';approve.style.cssText='border:1px solid #3a455e;border-radius:10px;background:#1d2637;color:#fff;padding:8px 10px;font-weight:800;touch-action:manipulation';approve.onclick=()=>{box.style.borderColor='#4cbf9f';approve.textContent='Approved';approve.disabled=true};
+      const open=document.createElement('button');open.type='button';open.textContent='Open deeper review';open.style.cssText='border:0;border-radius:10px;background:#806fff;color:#fff;padding:8px 10px;font-weight:800;touch-action:manipulation';open.onclick=()=>sendToApp(capture,item);
+      const approve=document.createElement('button');approve.type='button';approve.textContent='Approve';approve.style.cssText='border:1px solid #3a455e;border-radius:10px;background:#1d2637;color:#fff;padding:8px 10px;font-weight:800;touch-action:manipulation';approve.onclick=()=>{box.style.borderColor='#4cbf9f';approve.textContent='Approved';approve.disabled=true};
       bar.append(open,approve);box.appendChild(bar);body.appendChild(box);
     });
-    const all=document.createElement('button');all.textContent='Open all in Provenance';all.style.cssText='width:100%;margin-top:6px;border:0;border-radius:12px;background:#806fff;color:#fff;padding:10px;font-weight:800;touch-action:manipulation';all.onclick=()=>sendToApp(capture);body.appendChild(all);
+    const all=document.createElement('button');all.type='button';all.textContent='Open all in Provenance';all.style.cssText='width:100%;margin-top:6px;border:0;border-radius:12px;background:#806fff;color:#fff;padding:10px;font-weight:800;touch-action:manipulation';all.onclick=()=>sendToApp(capture);body.appendChild(all);
   }
 
   let timer=0;
