@@ -333,7 +333,7 @@ input[type="range"]{padding:0;background:transparent;border:0}
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v2.6 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v2.7 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
@@ -665,9 +665,9 @@ function removeFiltered(){
 }
 const CANVAS_LENS_URL='https://hollowaywalter6-droid.github.io/-provenance-studio/';
 function canvasBookmarklet(){
-  const overlay='https://hollowaywalter6-droid.github.io/-provenance-studio/canvas-overlay.js?v=1';
-  const fallback="javascript:(()=>{const A='https://hollowaywalter6-droid.github.io/-provenance-studio/',n=s=>String(s||'').replace(/\\s+/g,' ').trim(),Q=[...document.querySelectorAll('.question,.quiz_question,[data-question-id]')],P=Q.map((e,i)=>({index:i+1,question:n((e.querySelector('.question_text,.question_name,legend,h1,h2,h3,h4')||e).innerText).slice(0,1200),options:[...e.querySelectorAll('input[type=radio],input[type=checkbox]')].map((x,j)=>({label:String.fromCharCode(65+j),text:n((x.closest('label')||x.parentElement).innerText)}))})),d={title:document.title,url:location.href,context:n(document.body.innerText).slice(0,16000),items:P.length?P:[{index:1,question:n(document.body.innerText).slice(0,6000),options:[]}]};open(A+'#canvas='+encodeURIComponent(JSON.stringify(d)),'_blank')})()";
-  return "javascript:(()=>{let s=document.createElement('script');s.src='"+overlay+"';s.onerror=()=>{"+fallback.slice(11)+"};document.documentElement.appendChild(s)})()";
+  const app='https://hollowaywalter6-droid.github.io/-provenance-studio/';
+  const code=`(()=>{const A='${app}',n=s=>String(s||'').replace(/\\s+/g,' ').trim(),V=e=>{if(!e)return false;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'},L=x=>{const a=x.getAttribute&&x.getAttribute('aria-label');if(a)return n(a);if(x.id){try{const l=document.querySelector('label[for="'+CSS.escape(x.id)+'"]');if(l)return n(l.innerText)}catch(e){}}return n((x.closest&&x.closest('label')||x.parentElement||x).innerText)},R=[...document.querySelectorAll('.question,.quiz_question,[data-question-id],.question_holder')].filter(V),F=R.length?R:[...document.querySelectorAll('fieldset,[role="group"][aria-labelledby]')].filter(e=>V(e)&&e.querySelector('input,textarea,select,[role="radio"],[role="checkbox"]')),P=[...new Set(F)].map((e,i)=>{let q='';for(const s of ['.question_text','.question_name','legend','[data-testid*="question-text"]','h1','h2','h3','h4']){const z=e.querySelector(s);if(z&&n(z.innerText).length>3){q=n(z.innerText);break}}if(!q)q=n(e.innerText).slice(0,1600);const o=[...e.querySelectorAll('input[type="radio"],input[type="checkbox"],[role="radio"],[role="checkbox"]')].filter(V).map((x,j)=>({label:String.fromCharCode(65+j),text:L(x)})).filter(x=>x.text);return{index:i+1,question:q||('Question '+(i+1)),options:o,openResponse:!!e.querySelector('textarea,input[type="text"],input[type="number"],[contenteditable="true"]')}}),d={type:'PROVENANCE_CANVAS_CAPTURE',version:2,payload:{title:document.title,url:location.href,context:n(document.body.innerText).slice(0,30000),items:P.length?P:[{index:1,question:n(document.body.innerText).slice(0,7000),options:[],openResponse:true}],meta:{frame:top===self?'top':'embedded',capturedAt:new Date().toISOString()}}},w=open(A+'#canvas-ready','_blank');if(!w){alert('Allow pop-ups for Canvas and try Provenance Lens again.');return}let k=0,t=setInterval(()=>{k++;try{w.postMessage(d,new URL(A).origin)}catch(e){}if(k>20)clearInterval(t)},250)})()`;
+  return 'javascript:'+code;
 }
 async function copyCanvasBookmarklet(){
   const code=canvasBookmarklet();
@@ -677,32 +677,55 @@ async function copyCanvasBookmarklet(){
 function showCanvasSetup(){
   const el=$('canvasSetup');
   el.style.display=el.style.display==='none'?'block':'none';
-  el.textContent='iPhone/iPad Safari one-time setup:\n\n1. Bookmark any page in Safari and name it “Provenance Lens.”\n2. Edit that bookmark.\n3. Replace its address with the Lens bookmarklet you copied.\n4. On a Canvas page, open Bookmarks and tap “Provenance Lens.”\n5. The Lens scans visible Canvas content and opens the detected questions here automatically.\n\nDesktop: the repository includes browser-extension/ for an automatic Canvas overlay.';
+  el.textContent='iPhone/iPad Safari one-time setup:\n\n1. Bookmark any page in Safari and name it “Provenance Lens.”\n2. Edit that bookmark.\n3. Replace its address with the Lens bookmarklet you copied.\n4. On a Canvas page, open Bookmarks and tap “Provenance Lens.”\n5. The Lens reads the visible Canvas page and sends detected questions here automatically.\n\nDesktop: the repository includes browser-extension/ for an automatic Canvas overlay that rescans dynamic Canvas views.';
 }
 function openCanvasLensDemo(){window.open('./test/canvas-fixture.html','_blank')}
+function sanitizeCanvasPayload(payload){
+  const p=payload&&typeof payload==='object'?payload:{};
+  const items=(Array.isArray(p.items)?p.items:[]).slice(0,100).map(function(item,i){
+    const options=(Array.isArray(item&&item.options)?item.options:[]).slice(0,20).map(function(o,j){
+      return {label:String((o&&o.label)||String.fromCharCode(65+j)).slice(0,8),text:String((o&&o.text)||'').slice(0,1800)}
+    });
+    return {index:i+1,question:String((item&&item.question)||('Question '+(i+1))).slice(0,5000),options:options,openResponse:!!(item&&item.openResponse)}
+  });
+  return {title:String(p.title||'Canvas page').slice(0,500),url:String(p.url||'').slice(0,3000),context:String(p.context||'').slice(0,50000),items:items,meta:p.meta&&typeof p.meta==='object'?p.meta:{}}
+}
+function handleCanvasPayload(payload,sourceLabel){
+  const p=sanitizeCanvasPayload(payload);
+  if(!p.items.length)return false;
+  $('canvasQuestions').value=p.items.map(function(item,i){
+    const q=(i+1)+'. '+item.question;
+    const opts=item.options.map(function(o,j){return (o.label||String.fromCharCode(65+j))+'. '+o.text}).join('\n');
+    return q+(opts?'\n'+opts:'');
+  }).join('\n\n');
+  $('canvasNotes').value=p.context;
+  const status=$('canvasBridgeStatus');
+  if(status)status.textContent='Canvas Lens connected • '+p.items.length+' item'+(p.items.length===1?'':'s')+' received'+(sourceLabel?' • '+sourceLabel:'');
+  buildStudyQueue();
+  showTab('canvas');
+  notice('Canvas page captured automatically. Review the detected items below.');
+  return true;
+}
 function importCanvasHash(){
+  if(location.hash==='#canvas-ready')return false;
   if(!location.hash.startsWith('#canvas='))return false;
   try{
     const payload=JSON.parse(decodeURIComponent(location.hash.slice(8)));
-    const items=Array.isArray(payload.items)?payload.items:[];
-    $('canvasQuestions').value=items.map(function(item,i){
-      const q=(i+1)+'. '+String(item.question||('Question '+(i+1)));
-      const opts=(item.options||[]).map(function(o,j){return (o.label||String.fromCharCode(65+j))+'. '+String(o.text||'')}).join('\n');
-      return q+(opts?'\n'+opts:'');
-    }).join('\n\n');
-    $('canvasNotes').value=String(payload.context||'');
-    const status=$('canvasBridgeStatus');
-    if(status)status.textContent='Canvas Lens connected • '+items.length+' item'+(items.length===1?'':'s')+' received';
-    buildStudyQueue();
-    showTab('canvas');
+    const ok=handleCanvasPayload(payload,'legacy bridge');
     history.replaceState(null,'',location.pathname+location.search);
-    notice('Canvas page captured automatically. Review the detected items below.');
-    return true;
+    return ok;
   }catch(err){
     const status=$('canvasBridgeStatus');if(status)status.textContent='Canvas Lens import failed';
     notice('Canvas Lens import could not be decoded.');return false;
   }
 }
+window.addEventListener('message',function(event){
+  const data=event&&event.data;
+  if(!data||data.type!=='PROVENANCE_CANVAS_CAPTURE'||!data.payload)return;
+  const ok=handleCanvasPayload(data.payload,'live page bridge');
+  if(ok&&location.hash==='#canvas-ready')history.replaceState(null,'',location.pathname+location.search);
+  try{if(event.source&&typeof event.source.postMessage==='function')event.source.postMessage({type:'PROVENANCE_CANVAS_ACK',ok:!!ok},event.origin||'*')}catch(e){}
+});
 let studyItems=[];
 function tokenizeStudy(s){
   const stop=new Set(['the','a','an','and','or','but','of','to','in','on','for','is','are','was','were','be','with','that','this','it','as','by','from','at','which','what','why','how','when','where','who']);
@@ -891,8 +914,14 @@ function runDeepQA(){
     add('Every panel renders visibly',visiblePass,'Each tab was opened and measured');
   }catch(e){add('Tab visual traversal',false,e.message)}
   try{
-    const buttons=[...document.querySelectorAll('button')],bad=buttons.filter(function(b){const r=b.getBoundingClientRect();return r.width===0||r.height===0});
-    add('Visible button geometry',bad.length===0,(buttons.length-bad.length)+'/'+buttons.length+' buttons measured');
+    const original=document.querySelector('.tab.active')?.dataset.tab||'draft',tabs=[...document.querySelectorAll('.tab')];
+    let total=0,bad=0;
+    tabs.forEach(function(t){
+      showTab(t.dataset.tab);
+      [...$('panel-'+t.dataset.tab).querySelectorAll('button')].forEach(function(b){total++;const r=b.getBoundingClientRect();if(r.width===0||r.height===0)bad++});
+    });
+    showTab(original);
+    add('Visible button geometry',bad===0,(total-bad)+'/'+total+' visible-panel buttons measured');
   }catch(e){add('Button geometry',false,e.message)}
   try{
     const sample='1. Which item matches the notes?\nA. Alpha\nB. Beta\n\n2. Explain the concept.';
@@ -935,7 +964,7 @@ function runSelfTest(){
   t('Study Assist',()=>typeof studyAssist==='function');
   t('Canvas Study parser',()=>typeof splitStudyQuestions==='function'&&parseStudyBlock('1. Example question\nA. One\nB. Two',0).options.length===2);
   t('Canvas approval gate',()=>typeof approveStudyItem==='function'&&Array.isArray(studyItems));
-  t('Canvas Lens bridge',()=>typeof importCanvasHash==='function'&&typeof canvasBookmarklet==='function'&&canvasBookmarklet().startsWith('javascript:'));
+  t('Canvas Lens bridge',()=>typeof importCanvasHash==='function'&&typeof handleCanvasPayload==='function'&&typeof canvasBookmarklet==='function'&&canvasBookmarklet().startsWith('javascript:'));
   t('Humanize controls',()=>!!$('rewriteTone')&&!!$('humanizeStrength')&&typeof humanizeLocal==='function');
   t('Advanced writing signals',()=>!!$('burstMetric')&&!!$('lexicalMetric')&&!!$('analysisDetail'));
   t('TXT/MD/JSON/CSV export',()=>typeof blobDownload==='function'&&typeof downloadJSON==='function'&&typeof downloadCSV==='function');
@@ -950,7 +979,7 @@ function interactiveBoot(){
   try{
     loadCurrent();
     const w=$('runtimeWarning');if(w)w.style.display='none';
-    notice('Ready • Version 2.6 • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);
+    notice('Ready • Version 2.7 • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);
   }catch(err){
     const w=$('runtimeWarning');
     if(w){w.style.display='block';w.textContent='Startup recovered with an error: '+((err&&err.message)||err)+'. Reload once, then run health checks.'}
@@ -963,7 +992,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.6',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.7',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
 }
 </script>
 </body>
