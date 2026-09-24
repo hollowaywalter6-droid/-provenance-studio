@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Provenance Studio Live Smoke Test</title>
+<style>
+body{font-family:system-ui;background:#0b0d12;color:#f5f7fb;margin:0;padding:18px}
+.wrap{max-width:980px;margin:auto}.card{background:#141a25;border:1px solid #2d374a;border-radius:16px;padding:16px;margin:12px 0}
+.pass{color:#63e6be}.fail{color:#ff7b7b}iframe{width:100%;height:520px;border:1px solid #344058;border-radius:14px;background:white}
+.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #283247;padding:9px 0}.small{color:#a8b2c5;font-size:13px}
+</style></head><body><div class="wrap">
+<h1>Provenance Studio Live Smoke Test</h1>
+<div class="small">Loads the deployed app in a same-origin frame and checks runtime handlers, tabs, visible controls, Canvas Lens bridge, rewrite controls, projects, and export generators without changing your real saved project data.</div>
+<div id="summary" class="card">Starting…</div><div id="results" class="card"></div>
+<iframe id="app" src="../index.html?qa=1"></iframe>
+<script>
+const out=document.getElementById('results'),summary=document.getElementById('summary'),frame=document.getElementById('app');
+function row(name,ok,detail){const d=document.createElement('div');d.className='row';d.innerHTML='<span>'+name+'<div class="small">'+(detail||'')+'</div></span><b class="'+(ok?'pass':'fail')+'">'+(ok?'PASS':'FAIL')+'</b>';out.appendChild(d);return ok}
+frame.addEventListener('load',()=>setTimeout(()=>{
+  const w=frame.contentWindow,d=w.document;let all=true;out.innerHTML='';
+  try{all=row('App booted',!!d.getElementById('draft'),'Draft workspace found')&&all}catch(e){all=row('App booted',false,e.message)&&all}
+  try{
+    const tabs=[...d.querySelectorAll('.tab')];let ok=tabs.length>=10;
+    tabs.forEach(t=>{w.showTab(t.dataset.tab);const p=d.getElementById('panel-'+t.dataset.tab);ok=ok&&!!p&&getComputedStyle(p).display!=='none'&&p.getBoundingClientRect().width>0});
+    w.showTab('draft');all=row('All tab panels render',ok,tabs.length+' tabs exercised')&&all;
+  }catch(e){all=row('All tab panels render',false,e.message)&&all}
+  try{
+    const buttons=[...d.querySelectorAll('button')],names=[...new Set(buttons.map(b=>(b.getAttribute('onclick')||'').match(/^([A-Za-z_$][\w$]*)/)?.[1]).filter(Boolean))];
+    const ok=names.every(n=>typeof w[n]==='function');all=row('Button handlers resolve',ok,names.length+' unique handlers checked')&&all;
+  }catch(e){all=row('Button handlers resolve',false,e.message)&&all}
+  try{
+    const b=[...d.querySelectorAll('button')].filter(x=>{const r=x.getBoundingClientRect();return r.width===0||r.height===0});
+    all=row('Button geometry',b.length===0,b.length?'Hidden/zero buttons: '+b.length:'All buttons have geometry')&&all;
+  }catch(e){all=row('Button geometry',false,e.message)&&all}
+  try{
+    const p=w.splitStudyQuestions('1. Example?\nA. One\nB. Two\n\n2. Explain.').map(w.parseStudyBlock);
+    all=row('Canvas parser',p.length===2&&p[0].options.length===2,'Question blocks and choices parsed')&&all;
+  }catch(e){all=row('Canvas parser',false,e.message)&&all}
+  try{const bm=w.canvasBookmarklet();all=row('Canvas Lens bridge',bm.startsWith('javascript:')&&bm.length>200,bm.length+' chars')&&all}catch(e){all=row('Canvas Lens bridge',false,e.message)&&all}
+  try{all=row('Humanize controls',!!d.getElementById('rewriteTone')&&!!d.getElementById('humanizeStrength')&&typeof w.humanizeLocal==='function','Tone, strength, engine present')&&all}catch(e){all=row('Humanize controls',false,e.message)&&all}
+  try{const x=w.makeXLSX();all=row('XLSX export engine',x&&x.length>500,(x&&x.length||0)+' bytes generated')&&all}catch(e){all=row('XLSX export engine',false,e.message)&&all}
+  try{
+    const q=d.getElementById('canvasQuestions'),n=d.getElementById('canvasNotes');q.value='1. Practice question?\nA. First\nB. Second';n.value='Practice context mentions Second.';w.buildStudyQueue();
+    all=row('Canvas review queue renders',d.querySelectorAll('#studyQueue .study-card').length===1,'One review card rendered')&&all;
+    q.value='';n.value='';w.clearStudyQueue();
+  }catch(e){all=row('Canvas review queue renders',false,e.message)&&all}
+  summary.innerHTML='<b class="'+(all?'pass':'fail')+'">'+(all?'ALL LIVE SMOKE TESTS PASSED':'ONE OR MORE LIVE SMOKE TESTS FAILED')+'</b><div class="small">Tested at '+new Date().toLocaleString()+'</div>';
+},800));
+</script></div></body></html>
