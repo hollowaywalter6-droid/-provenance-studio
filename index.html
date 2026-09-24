@@ -81,22 +81,23 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
       <div class="brand"><div class="logo"></div><div><h1>Provenance Studio</h1><div class="sub">Standalone • Zero-credit local mode</div></div></div>
       <div class="status"><span class="dot"></span> Works without Replit</div>
     </div>
-    <div id="runtimeWarning" class="runtime-warning">Checking interactive runtime… If this message does not disappear, this file viewer is blocking the app’s JavaScript. The app must be opened in a normal browser/hosted page for buttons to run.</div>
+    <div id="runtimeWarning" class="runtime-warning">Starting the app… If controls do not respond, open this page directly in Safari. A startup or browser error may be preventing the app from running.</div>
   </div>
 
   <section class="hero">
     <div class="card glass">
       <div class="kicker">Local Intelligence Core</div>
       <div class="big">Your writing workspace should work even when every cloud account is disconnected.</div>
-      <p class="small">Projects, uploads, analysis, revision tools, exports, diagnostics, and local storage all run on this device. Cloud AI and connectors are optional enhancements.</p>
+      <p class="small">Projects, uploads, analysis, revision tools, exports, diagnostics, and local storage all run on this device. AI, OCR, and live web verification are not connected in this edition.</p>
       <div class="toolbar">
         <button class="primary" onclick="showTab('draft')">Open workspace</button>
-        <button class="secondary" onclick="runSelfTest()">Test everything</button>
+        <button class="secondary" onclick="runSelfTest()">Check app health</button>
       </div>
     </div>
     <div class="card orbwrap"><div class="orb" title="Local Core"></div></div>
   </section>
 
+  <div id="appStatus" role="status" aria-live="polite" class="small" style="margin:12px 0"></div>
   <div class="grid">
     <div class="metric"><b id="wordMetric">0</b><span>Words</span></div>
     <div class="metric"><b id="sentenceMetric">0</b><span>Sentences</span></div>
@@ -137,7 +138,7 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
           <div class="label" style="margin-top:16px">Camera / photo</div>
           <div class="filebox">
             <strong>Take or choose a photo</strong>
-            <div class="small" style="margin-top:6px">Photos can be attached to the project locally.</div>
+            <div class="small" style="margin-top:6px">Preview a photo on this device. Photos are not saved with text projects.</div>
             <input id="cameraInput" type="file" accept="image/*" capture="environment" onchange="handleImage(event)">
           </div>
           <div id="uploadStatus" class="result" style="margin-top:14px;min-height:80px">No file selected.</div>
@@ -150,7 +151,7 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
       <div class="two">
         <div>
           <div class="label">Project name</div>
-          <input id="projectName" placeholder="Untitled project">
+          <input id="projectName" oninput="onDraftChange()" placeholder="Untitled project">
           <div class="toolbar">
             <button class="primary" onclick="saveProject()">Save project</button>
             <button class="secondary" onclick="newProject()">New project</button>
@@ -192,7 +193,7 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
       <div class="two">
         <div>
           <div class="kicker">Citation verifier</div>
-          <p class="small">Local mode checks citation structure, URLs, DOI patterns, and uncited factual claims. Live source validation requires an optional web connector.</p>
+          <p class="small">Local mode checks citation structure, URLs, DOI patterns, and uncited factual claims. Live source validation is not available in this edition.</p>
           <button class="primary" onclick="verifyCitations()">Check citations</button>
           <div id="citationResult" class="result" style="margin-top:12px"></div>
         </div>
@@ -256,27 +257,35 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
         </div>
         <div class="item">
           <strong>Claude / ChatGPT / Copilot</strong>
-          <div class="small">Optional advanced AI providers. This zero-credit build does not hard-code API keys or require them for core features.</div>
+          <div class="small">Not connected in this edition. These cards do not provide AI access. The tools here use local rules, not Claude, ChatGPT, or Copilot.</div>
         </div>
         <div class="item">
           <strong>Replit Developer</strong>
-          <div class="small">Developer-only. It is never required to open or use the app.</div>
+          <div class="small">Not connected in this edition. No automatic development or deployment is performed.</div>
         </div>
       </div>
     </div>
 
     <div class="panel" id="panel-diagnostics">
-      <div class="toolbar"><button class="primary" onclick="runSelfTest()">Run all tests</button></div>
+      <div class="toolbar"><button class="primary" onclick="runSelfTest()">Run health checks</button></div>
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v2 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v2.1 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
 const STORE='provenance-standalone-projects-v1';
 const CURRENT='provenance-standalone-current-v1';
 let rewriteBuffer='';
+let currentProjectId=null;
+const memoryStorage=new Map();
+function notice(message){$('appStatus').textContent=message}
+function readStored(key){try{return localStorage.getItem(key)}catch(e){return memoryStorage.get(key)||null}}
+function writeStored(key,value){
+  memoryStorage.set(key,value);
+  try{localStorage.setItem(key,value);return true}catch(e){notice('Device storage is unavailable or full. Your changes remain open, but are not saved permanently. Export a backup.');return false}
+}
 
 function $(id){return document.getElementById(id)}
 function showTab(name){
@@ -285,19 +294,22 @@ function showTab(name){
   $('panel-'+name).classList.add('active');
 }
 function words(t){return (t.trim().match(/\b[\w’'-]+\b/g)||[])}
-function sents(t){return (t.replace(/\n+/g,' ').match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[]).map(x=>x.trim()).filter(Boolean)}
+function sents(t){
+  const urls=[];const masked=t.replace(/https?:\/\/\S+/g,u=>{let tail='';while(/[.!?,;]$/.test(u)){tail=u.slice(-1)+tail;u=u.slice(0,-1)}urls.push(u);return 'PVURLTOKEN'+(urls.length-1)+'END'+tail});
+  return (masked.replace(/\n+/g,' ').match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[]).map(x=>x.trim().replace(/PVURLTOKEN(\d+)END/g,(_,i)=>urls[+i])).filter(Boolean)
+}
 function onDraftChange(){
   const t=$('draft').value;
   $('wordMetric').textContent=words(t).length;
   $('sentenceMetric').textContent=sents(t).length;
-  localStorage.setItem(CURRENT,JSON.stringify({name:$('projectName').value,text:t,updated:Date.now()}));
+  writeStored(CURRENT,JSON.stringify({id:currentProjectId,name:$('projectName').value,text:t,updated:Date.now()}));
 }
 function loadCurrent(){
-  try{const c=JSON.parse(localStorage.getItem(CURRENT)||'null');if(c){$('projectName').value=c.name||'';$('draft').value=c.text||''}}catch(e){}
+  try{const c=JSON.parse(readStored(CURRENT)||'null');if(c){currentProjectId=c.id||null;$('projectName').value=c.name||'';$('draft').value=c.text||''}}catch(e){}
   onDraftChange(); renderProjects();
 }
-function getProjects(){try{return JSON.parse(localStorage.getItem(STORE)||'[]')}catch(e){return[]}}
-function setProjects(p){localStorage.setItem(STORE,JSON.stringify(p));renderProjects()}
+function getProjects(){try{const p=JSON.parse(readStored(STORE)||'[]');return Array.isArray(p)?p.filter(x=>x&&typeof x.text==='string'):[]}catch(e){return[]}}
+function setProjects(p){const saved=writeStored(STORE,JSON.stringify(p));renderProjects();return saved}
 function renderProjects(){
   const p=getProjects(); $('projectMetric').textContent=p.length;
   $('projectList').innerHTML=p.length?'':'<div class="small">No saved projects yet.</div>';
@@ -305,18 +317,19 @@ function renderProjects(){
     const d=document.createElement('div');d.className='item';
     d.innerHTML='<strong>'+esc(pr.name||'Untitled project')+'</strong><div class="small">'+new Date(pr.updated).toLocaleString()+' • '+words(pr.text||'').length+' words</div>';
     const row=document.createElement('div');row.className='toolbar';
-    const open=document.createElement('button');open.textContent='Open';open.onclick=()=>{ $('projectName').value=pr.name;$('draft').value=pr.text||'';onDraftChange();showTab('draft')};
+    const open=document.createElement('button');open.textContent='Open';open.onclick=()=>{ currentProjectId=pr.id;$('projectName').value=pr.name;$('draft').value=pr.text||'';onDraftChange();showTab('draft')};
     const del=document.createElement('button');del.textContent='Delete';del.className='ghost';del.onclick=()=>{if(confirm('Delete this project?'))setProjects(getProjects().filter(x=>x.id!==pr.id))};
     row.append(open,del);d.append(row);$('projectList').append(d);
   })
 }
 function saveProject(){
   const name=$('projectName').value.trim()||'Untitled project', text=$('draft').value;
-  let p=getProjects(); let existing=p.find(x=>x.name===name);
-  if(existing){existing.text=text;existing.updated=Date.now()}else p.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),name,text,updated:Date.now()});
-  setProjects(p);localStorage.setItem(CURRENT,JSON.stringify({name,text,updated:Date.now()}));alert('Project saved on this device.');
+  const p=getProjects();let existing=p.find(x=>x.id===currentProjectId);
+  if(existing){existing.name=name;existing.text=text;existing.updated=Date.now()}
+  else {currentProjectId=crypto.randomUUID?crypto.randomUUID():String(Date.now());p.push({id:currentProjectId,name,text,updated:Date.now()})}
+  const saved=setProjects(p);onDraftChange();if(saved)notice('Project saved on this device.');
 }
-function newProject(){$('projectName').value='';$('draft').value='';onDraftChange();showTab('draft')}
+function newProject(){currentProjectId=null;$('projectName').value='';$('draft').value='';rewriteBuffer='';onDraftChange();showTab('draft');notice('New project ready. Previous saved projects are still available.')}
 function clearDraft(){if(confirm('Clear the current draft?')){$('draft').value='';onDraftChange()}}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
@@ -406,6 +419,7 @@ async function handleFile(e){
     let text='';
     if(['txt','md','csv','json'].includes(ext)||f.type.startsWith('text/')){
       text=await f.text();
+      if(ext==='json'){const project=JSON.parse(text);if(project&&typeof project.text==='string'){text=project.text;currentProjectId=null;$('projectName').value=typeof project.name==='string'?project.name:''}}
     }else if(ext==='docx'){
       text=await extractDocx(await f.arrayBuffer());
     }else if(ext==='pdf'){
@@ -433,7 +447,7 @@ async function handleImage(e){
     img.src=URL.createObjectURL(f);img.style.display='block';
     img.onload=()=>{setTimeout(()=>URL.revokeObjectURL(img.src),5000)};
   }catch(_){}
-  $('uploadStatus').textContent='Photo attached successfully: '+f.name+' ('+Math.round(f.size/1024)+' KB). Image upload/preview works locally. OCR is optional because browsers do not provide a reliable built-in text-recognition API.';
+  $('uploadStatus').textContent='Photo preview only (not saved in projects): '+f.name+' ('+Math.round(f.size/1024)+' KB). Image upload/preview works locally. OCR is optional because browsers do not provide a reliable built-in text-recognition API.';
 }
 
 function analyze(){
@@ -446,7 +460,7 @@ function analyze(){
   const score=Math.max(3,Math.min(97,Math.round(62-(cv*48)+hits*8)));
   $('signalMetric').textContent=score;
   $('scoreBig').textContent=score+' / 100';
-  $('bandText').textContent=score<35?'Mostly human-typical pattern signals.':score<65?'Mixed pattern signals.':'Strongly uniform/model-typical patterns. This is not proof of authorship.';
+  $('bandText').textContent=(score<35?'More varied sentence patterns.':score<65?'Mixed sentence patterns.':'More uniform sentence patterns.')+' This rule-based score cannot determine human or AI authorship.';
   $('sentenceMap').innerHTML='';
   ss.forEach((s,i)=>{const d=document.createElement('div');d.className='item';d.innerHTML='<strong>Sentence '+(i+1)+'</strong><div class="small">'+words(s).length+' words</div><div>'+esc(s)+'</div>';$('sentenceMap').append(d)});
   showTab('analysis')
@@ -458,7 +472,7 @@ function cleanupCommon(t){
 function rewrite(mode){
   let t=cleanupCommon($('draft').value); if(!t){$('rewriteResult').textContent='Add text first.';return}
   if(mode==='concise')t=t.replace(/\b(very|really|basically|actually|just|quite|rather)\b\s*/gi,'').replace(/\bin order to\b/gi,'to').replace(/\bdue to the fact that\b/gi,'because');
-  if(mode==='direct')t=t.replace(/\bIt is important to note that\s*/gi,'').replace(/\bThere are\b/gi,'').replace(/\bThere is\b/gi,'');
+  if(mode==='direct')t=t.replace(/\bIt is important to note that\s*/gi,'');
   if(mode==='clear')t=t.replace(/;/g,'.').replace(/\bhowever,\s*/gi,'But ').replace(/\btherefore,\s*/gi,'So ');
   if(mode==='academic')t=t.replace(/\ba lot of\b/gi,'many').replace(/\bthings\b/gi,'factors').replace(/\bget\b/gi,'obtain');
   if(mode==='natural')t=t.replace(/\bFurthermore,\s*/gi,'Also, ').replace(/\bMoreover,\s*/gi,'Also, ').replace(/\bIn conclusion,\s*/gi,'Overall, ');
@@ -491,8 +505,9 @@ function findFiltered(){
   $('filterResult').textContent=found.length?found.map(x=>x[0]+' × '+x[1]).join('\n'):'No filtered words found.'
 }
 function removeFiltered(){
-  let t=$('draft').value;filterTerms().forEach(term=>{t=t.replace(new RegExp('\\b'+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','gi'),'')});
-  $('draft').value=cleanupCommon(t);onDraftChange();$('filterResult').textContent='Selected terms removed.'
+  const urls=[];let t=$('draft').value.replace(/https?:\/\/\S+/g,u=>{urls.push(u);return 'PVURLTOKEN'+(urls.length-1)+'END'});
+  filterTerms().forEach(term=>{t=t.replace(new RegExp('\\b'+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','gi'),'')});
+  $('draft').value=cleanupCommon(t).replace(/PVURLTOKEN(\d+)END/g,(_,i)=>urls[+i]);onDraftChange();$('filterResult').textContent='Selected terms removed. Links preserved.'
 }
 function studyAssist(){
   const q=$('studyQuestion').value.trim();if(!q){$('studyResult').textContent='Add a question first.';return}
@@ -588,20 +603,21 @@ function runSelfTest(){
   t('XLSX export engine',()=>typeof makeXLSX==='function'&&makeXLSX().length>500);
   t('Native file/share bridge',()=>typeof openNativeFilePicker==='function'&&typeof shareProjectFile==='function');
   t('Web Share support',()=>navigator.share?'Available':'Optional — download fallback active');
-  const out=$('testResults');out.innerHTML='';
+  const out=$('testResults');out.innerHTML='<p class="small">Capability checks only. These checks do not verify camera hardware, file contents, AI connections, or every user interaction.</p>';
   tests.forEach(x=>{const d=document.createElement('div');d.className='testline';d.innerHTML='<span>'+esc(x[0])+'</span><strong class="'+(x[1]?'good':'bad')+'">'+(x[1]?'PASS':'FAIL')+'</strong>';out.append(d)});
   showTab('diagnostics')
 }
 function interactiveBoot(){
-  const w=$('runtimeWarning');if(w)w.style.display='none';
-  loadCurrent();
+  loadCurrent();const w=$('runtimeWarning');if(w)w.style.display='none';notice('Ready • Version 2.1 • Local tools available.');
 }
-window.addEventListener('load',interactiveBoot);
+window.addEventListener('error',e=>{const w=$('runtimeWarning');if(w){w.style.display='block';w.textContent='App error: '+e.message+'. Your saved projects have not been deleted.'}});
+window.addEventListener('unhandledrejection',e=>notice('Operation could not finish: '+(e.reason?.message||'Please try again.')));
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',interactiveBoot);else interactiveBoot();
 </script>
 
 <script>
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
 }
 </script>
 </body>
