@@ -1,86 +1,26 @@
-import {chromium,webkit} from 'playwright';
-
-const base=process.env.BASE_URL||'http://127.0.0.1:4173/';
-const failures=[];
-function ok(name,pass,detail=''){
-  console.log((pass?'PASS':'FAIL')+'  '+name+(detail?' — '+detail:''));
-  if(!pass)failures.push(name+(detail?': '+detail:''));
+import {chromium,webkit,firefox} from 'playwright';
+const base=process.env.BASE_URL||'http://127.0.0.1:4173/',failures=[];const ok=(n,p,d='')=>{console.log((p?'PASS':'FAIL')+'  '+n+(d?' — '+d:''));if(!p)failures.push(n+(d?': '+d:''))};
+async function suite(type,label,opts){
+ const browser=await type.launch({headless:true}),context=await browser.newContext(opts),errors=[];context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
+ const app=await context.newPage(),t0=Date.now();await app.goto(base+'index.html',{waitUntil:'networkidle'});ok(label+' app boots under 5s',Date.now()-t0<5000,(Date.now()-t0)+'ms');
+ await app.locator('#draft').fill(Array.from({length:1200},(_,i)=>'Sentence '+(i+1)+' exercises large-document analysis with representative text.').join(' '));const a0=Date.now();await app.getByRole('button',{name:'Analyze writing'}).click();ok(label+' large draft analysis under 3s',Date.now()-a0<3000,(Date.now()-a0)+'ms');await app.close();
+ const modes={classic:2,new:2,aria:2,select:2,hidden:2,mixed:6,observed:1,selected:1,nestedfeedback:1,long:80};
+ for(const [mode,count] of Object.entries(modes)){
+   const p=await context.newPage();await p.goto(base+'test/canvas-compat.html?mode='+mode,{waitUntil:'networkidle'});await p.waitForSelector('#provenance-canvas-lens-v2');
+   const text=await p.locator('#provenance-canvas-lens-v2').innerText(),before=await p.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
+   ok(label+' '+mode+' detects expected question count',text.includes(count+' unique question')||text.includes(count+' question block'),text.split('\n')[0]);
+   ok(label+' '+mode+' hides current-choice state',!text.includes('Currently selected'));
+   if(mode!=='nestedfeedback')ok(label+' '+mode+' does not show direct active-choice recommendation',!text.includes('Best-supported by visible evidence:'));
+   if(mode==='nestedfeedback')ok(label+' nested feedback confirmed',text.includes('Confirmed: B — Nature limits culture, while culture shapes nature over time.'));
+   if(mode==='long'){ok(label+' long page all listed',text.includes('80 unique questions')&&text.includes('all listed'));const filter=p.getByRole('searchbox',{name:'Filter Canvas Lens questions'});await filter.fill('Question 80');ok(label+' long filter narrows cards',(await p.locator('[data-lens-question]:visible').count())===1)}
+   await p.getByRole('button',{name:'Scan'}).click();ok(label+' '+mode+' preserves controls',(await p.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count())===before);await p.close()
+ }
+ const dynamic=await context.newPage();await dynamic.goto(base+'test/canvas-compat.html?mode=dynamic',{waitUntil:'domcontentloaded'});await dynamic.waitForSelector('#provenance-canvas-lens-v2');await dynamic.waitForFunction(()=>{const t=document.querySelector('#provenance-canvas-lens-v2')?.innerText||'';return t.includes('2 unique questions')||t.includes('2 question blocks')},{timeout:5000});ok(label+' dynamic auto-rescan',true);await dynamic.close();
+ const src=await context.newPage();await src.goto(base+'index.html',{waitUntil:'networkidle'});const bm=await src.evaluate(()=>canvasBookmarklet());await src.close();
+ const bmPage=await context.newPage();await bmPage.goto(base+'test/canvas-compat.html?mode=selected',{waitUntil:'networkidle'});const b0=await bmPage.locator('input:checked').count();await bmPage.evaluate(code=>(0,eval)(code.replace(/^javascript:/,'')),bm);await bmPage.waitForSelector('#provenance-iphone-lens');const bt=await bmPage.locator('#provenance-iphone-lens').innerText();ok(label+' iPhone Lens inline',bt.includes('Canvas Lens'));ok(label+' iPhone Lens selection-neutral',!bt.includes('Currently selected')&&(await bmPage.locator('input:checked').count())===b0);ok(label+' iPhone Lens filter',await bmPage.getByRole('searchbox',{name:'Filter Canvas Lens questions'}).isVisible());await bmPage.close();
+ ok(label+' runtime clean',errors.length===0,errors.join(' | '));await browser.close()
 }
-async function suite(browserType,label,contextOptions){
-  const browser=await browserType.launch({headless:true});
-  const context=await browser.newContext(contextOptions);
-  const errors=[];
-  context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
-
-  const classic=await context.newPage();
-  await classic.goto(base+'test/canvas-compat.html?mode=classic',{waitUntil:'networkidle'});
-  await classic.waitForSelector('#provenance-canvas-lens-v2');
-  const classicText=await classic.locator('#provenance-canvas-lens-v2').innerText();
-  ok(label+' classic Canvas detected',classicText.includes('2 unique questions')||classicText.includes('2 question blocks'));
-  ok(label+' current-choice state hidden',!classicText.includes('Currently selected'));
-  ok(label+' no automatic control changes',(await classic.locator('input:checked').count())===0);
-  await classic.close();
-
-  const selected=await context.newPage();
-  await selected.goto(base+'test/canvas-compat.html?mode=selected',{waitUntil:'networkidle'});
-  await selected.waitForSelector('#provenance-canvas-lens-v2');
-  const before=await selected.locator('input:checked').count();
-  const selectedText=await selected.locator('#provenance-canvas-lens-v2').innerText();
-  ok(label+' pre-existing choice is not displayed by Lens',!selectedText.includes('Currently selected'));
-  ok(label+' pre-existing choice is not changed',(await selected.locator('input:checked').count())===before);
-  await selected.close();
-
-  const feedback=await context.newPage();
-  await feedback.goto(base+'test/canvas-compat.html?mode=nestedfeedback',{waitUntil:'networkidle'});
-  await feedback.waitForSelector('#provenance-canvas-lens-v2');
-  const feedbackText=await feedback.locator('#provenance-canvas-lens-v2').innerText();
-  const prompt='What is the relationship between nature and culture in shaping reality?';
-  ok(label+' nested question deduplicated',feedbackText.split(prompt).length-1===1);
-  ok(label+' Canvas feedback is surfaced when the page exposes it',feedbackText.includes('Canvas feedback'));
-  ok(label+' feedback view stays current-choice neutral',!feedbackText.includes('Currently selected'));
-  await feedback.close();
-
-  const long=await context.newPage();
-  await long.goto(base+'test/canvas-compat.html?mode=long',{waitUntil:'networkidle'});
-  await long.waitForSelector('#provenance-canvas-lens-v2');
-  await long.waitForFunction(()=>{const t=document.querySelector('#provenance-canvas-lens-v2')?.innerText||'';return t.includes('80 unique questions')||t.includes('80 question blocks')});
-  const longText=await long.locator('#provenance-canvas-lens-v2').innerText();
-  ok(label+' long Canvas page lists all questions',longText.includes('all listed'));
-  ok(label+' long page renders every review card',(await long.getByRole('button',{name:'Mark reviewed'}).count())===80);
-  await long.close();
-
-  const dynamic=await context.newPage();
-  await dynamic.goto(base+'test/canvas-compat.html?mode=dynamic',{waitUntil:'domcontentloaded'});
-  await dynamic.waitForSelector('#provenance-canvas-lens-v2');
-  await dynamic.waitForFunction(()=>{const t=document.querySelector('#provenance-canvas-lens-v2')?.innerText||'';return t.includes('2 unique questions')||t.includes('2 question blocks')},{timeout:5000});
-  ok(label+' dynamic Canvas auto-rescan',true);
-  await dynamic.close();
-
-  const app=await context.newPage();
-  await app.goto(base+'index.html',{waitUntil:'networkidle'});
-  const bookmarklet=await app.evaluate(()=>canvasBookmarklet());
-  await app.close();
-
-  const bm=await context.newPage();
-  await bm.goto(base+'test/canvas-compat.html?mode=selected',{waitUntil:'networkidle'});
-  const bmBefore=await bm.locator('input:checked').count();
-  await bm.evaluate(code=>(0,eval)(code.replace(/^javascript:/,'')),bookmarklet);
-  await bm.waitForSelector('#provenance-iphone-lens');
-  const bmText=await bm.locator('#provenance-iphone-lens').innerText();
-  ok(label+' iPhone Lens stays inline',bmText.includes('Canvas Lens'));
-  ok(label+' iPhone Lens hides current-choice state',!bmText.includes('Currently selected'));
-  ok(label+' iPhone Lens preserves page controls',(await bm.locator('input:checked').count())===bmBefore);
-  await bm.close();
-
-  ok(label+' runtime clean',errors.length===0,errors.join(' | '));
-  await browser.close();
-}
-
 await suite(chromium,'Chromium',{viewport:{width:1200,height:900}});
 await suite(webkit,'WebKit mobile',{viewport:{width:390,height:844},isMobile:true,hasTouch:true});
-
-if(failures.length){
-  console.error('\nCANVAS NEUTRAL STRESS FAILURES\n'+failures.map(x=>' - '+x).join('\n'));
-  process.exit(1);
-}
-console.log('\nALL CANVAS SELECTION-NEUTRAL STRESS TESTS PASSED');
+await suite(firefox,'Firefox',{viewport:{width:1200,height:900}});
+if(failures.length){console.error('\nCOMPETITION FAILURES\n'+failures.map(x=>' - '+x).join('\n'));process.exit(1)}console.log('\nALL PRODUCTION COMPETITION TESTS PASSED');

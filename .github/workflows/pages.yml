@@ -29,7 +29,7 @@ jobs:
       - name: Install browser test runtime
         run: |
           npm install --no-save --no-package-lock playwright@latest
-          npx playwright install --with-deps chromium webkit
+          npx playwright install --with-deps chromium webkit firefox
       - name: Start local site
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/provenance-server.log 2>&1 &

@@ -107,6 +107,30 @@ input[type="range"]{padding:0;background:transparent;border:0}
   #sentenceMap{max-height:54vh;overflow:auto}
 }
 
+
+/* Production 4.2 visual system */
+:root{--surface3:#0b1018;--glow:rgba(139,124,255,.22);--focus:#b9b0ff}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:
+radial-gradient(circle at 8% 0%,rgba(139,124,255,.12),transparent 30%),
+radial-gradient(circle at 92% 18%,rgba(80,211,181,.08),transparent 27%);z-index:-1}
+.card{box-shadow:0 18px 55px rgba(0,0,0,.28);border-color:#30394d}
+.metric{position:relative;overflow:hidden}.metric:after{content:"";position:absolute;inset:auto 0 0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));opacity:.7}
+.tab{border:1px solid transparent}.tab.active{box-shadow:0 8px 26px rgba(139,124,255,.28)}
+button,input,textarea,select{transition:border-color .16s ease,box-shadow .16s ease,transform .12s ease}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.canvas-result{padding:11px 12px;border-radius:13px;background:#0c121c;border:1px solid #263147;display:grid;gap:5px}
+.canvas-result strong{font-size:.9rem}.canvas-result .cue{font-size:.82rem;color:#d9e1ef;line-height:1.42}
+.canvas-result .confirmed{color:var(--ok)}.canvas-result .hint{color:#d8d4ff}
+.production-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border-radius:999px;background:#111a27;border:1px solid #32405b;color:#cbd5e1;font-size:.72rem}
+.quick-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media(max-width:700px){
+  body{padding-bottom:env(safe-area-inset-bottom)}
+  .app{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+  .tabs{margin-left:-4px;margin-right:-4px;padding-left:4px;padding-right:4px;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  button{min-height:44px}.canvas-result{padding:10px}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
@@ -122,9 +146,10 @@ input[type="range"]{padding:0;background:transparent;border:0}
 
   <section class="hero">
     <div class="card glass">
-      <div class="kicker">Local Intelligence Core</div>
-      <div class="big">Your writing workspace should work even when every cloud account is disconnected.</div>
-      <p class="small">Projects, uploads, analysis, revision tools, exports, diagnostics, and local storage run on this device. Advanced PDF decoding and OCR load browser libraries only when a PDF needs them.</p>
+      <div class="kicker">Provenance Production Core</div>
+      <div class="big">One production workspace for documents, writing, verification, Canvas review, and export.</div>
+      <p class="small">Local-first workflows keep projects responsive on mobile. PDF.js and OCR load only when needed, cloud-provider cards remain honest about connection state, and release diagnostics are built in.</p>
+      <div class="quick-strip"><span class="production-badge">Local-first</span><span class="production-badge">Mobile optimized</span><span class="production-badge">Recovery protected</span><span class="production-badge">Canvas inline</span></div>
       <div class="toolbar">
         <button class="primary" onclick="showTab('draft')">Open workspace</button>
         <button class="secondary" onclick="runSelfTest()">Check app health</button>
@@ -149,7 +174,7 @@ input[type="range"]{padding:0;background:transparent;border:0}
       <button class="tab" data-tab="analysis" onclick="showTab('analysis')">Analysis</button>
       <button class="tab" data-tab="verify" onclick="showTab('verify')">Verify</button>
       <button class="tab" data-tab="tools" onclick="showTab('tools')">Tools</button>
-      <button class="tab" data-tab="canvas" onclick="showTab('canvas')">Canvas Study</button>
+      <button class="tab" data-tab="canvas" onclick="showTab('canvas')">Canvas Review</button>
       <button class="tab" data-tab="export" onclick="showTab('export')">Export</button>
       <button class="tab" data-tab="connectors" onclick="showTab('connectors')">Connectors</button>
       <button class="tab" data-tab="diagnostics" onclick="showTab('diagnostics')">Diagnostics</button>
@@ -289,33 +314,31 @@ input[type="range"]{padding:0;background:transparent;border:0}
     <div class="panel" id="panel-canvas">
       <div class="two">
         <div>
-          <div class="kicker">Canvas Lens + Study Assist</div>
-          <p class="small">The Canvas Lens works as an on-page floating review panel over Canvas. It can minimize, expand, rescan, and show evidence inline without switching apps. It does not change Canvas answer controls or submit assessments.</p>
+          <div class="kicker">Canvas Lens</div>
+          <p class="small">Runs inline over supported Canvas pages. It detects and deduplicates visible questions, ignores any current choice state, and keeps the page controls untouched. On active assessments it provides concise review hints; when Canvas itself exposes official post-submission feedback, that confirmed answer can be labeled.</p>
           <div class="item" style="margin-bottom:14px">
-            <strong>Overlay setup</strong>
-            <div class="small" style="margin:7px 0">Desktop: use the included browser extension for an automatic on-page Lens. iPhone/iPad: use the Safari bookmarklet. Both modes keep the Lens directly over Canvas so normal review does not require switching back to Provenance.</div>
+            <strong>Lens setup</strong>
+            <div class="small" style="margin:7px 0">Desktop: use the browser extension. iPhone/iPad: use the Safari bookmarklet. Both stay directly over Canvas.</div>
             <div class="toolbar">
               <button class="primary" onclick="copyCanvasBookmarklet()">Copy iPhone Lens bookmarklet</button>
-              <button onclick="openCanvasLensDemo()">Open live Lens demo</button>
-              <button onclick="showCanvasSetup()">Show setup steps</button>
+              <button onclick="openCanvasLensDemo()">Open Lens demo</button>
+              <button onclick="showCanvasSetup()">Setup steps</button>
             </div>
             <div id="canvasSetup" class="result" style="display:none;min-height:90px"></div>
           </div>
-          <div class="label">Questions / prompt set</div>
-          <textarea id="canvasQuestions" placeholder="1. Question text&#10;A. Option one&#10;B. Option two&#10;&#10;2. Short-answer prompt..."></textarea>
-          <div class="label" style="margin-top:12px">Your notes / source material</div>
-          <textarea id="canvasNotes" placeholder="Paste class notes, study guide, reading notes, or your own draft here..."></textarea>
+          <div id="canvasBridgeStatus" class="badge" style="margin-bottom:10px">Waiting for Canvas Lens</div>
+          <div class="label">Optional source notes</div>
+          <textarea id="canvasNotes" placeholder="Optional: paste class notes, reading notes, or source material to improve the review hints."></textarea>
           <div class="toolbar">
-            <button class="primary" onclick="buildStudyQueue()">Build review queue</button>
             <button onclick="loadDraftAsNotes()">Use current draft as notes</button>
-            <button class="ghost" onclick="clearStudyQueue()">Clear queue</button>
+            <button class="ghost" onclick="clearCanvasReview()">Clear review</button>
           </div>
         </div>
         <div>
-          <div class="kicker">Approval queue</div>
-          <p class="small">When the Lens sends a Canvas page, the detected questions and page context appear here automatically. Each suggestion stays local until you approve it.</p>
-          <div id="canvasBridgeStatus" class="badge" style="margin-bottom:10px">Waiting for Canvas Lens</div>
-          <div id="studyQueue" class="list"><div class="small">No questions loaded.</div></div>
+          <div class="kicker">Review results</div>
+          <p class="small">One compact result per detected question. No approval queue and no current-selection tracking.</p>
+          <input id="canvasReviewFilter" type="search" aria-label="Filter Canvas review results" placeholder="Filter questions…" oninput="filterCanvasReview()">
+          <div id="canvasReviewResults" class="list" style="margin-top:10px"><div class="small">No Canvas questions received yet.</div></div>
         </div>
       </div>
     </div>
@@ -368,13 +391,16 @@ input[type="range"]{padding:0;background:transparent;border:0}
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v4.1.0 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v4.2.0 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
-const APP_VERSION='4.1.0';
+const APP_VERSION='4.2.0';
 const STORE='provenance-standalone-projects-v1';
+const STORE_BACKUP='provenance-standalone-projects-backup-v1';
 const CURRENT='provenance-standalone-current-v1';
+const MAX_FILE_BYTES=50*1024*1024;
+const MAX_DOCX_XML_BYTES=12*1024*1024;
 let rewriteBuffer='';
 let currentProjectId=null;
 let sentenceMapExpanded=false,lastSentenceSet=[];
@@ -409,8 +435,26 @@ function loadCurrent(){
   try{const c=JSON.parse(readStored(CURRENT)||'null');if(c){currentProjectId=c.id||null;$('projectName').value=c.name||'';$('draft').value=c.text||''}}catch(e){}
   onDraftChange(); renderProjects();
 }
-function getProjects(){try{const p=JSON.parse(readStored(STORE)||'[]');return Array.isArray(p)?p.filter(x=>x&&typeof x.text==='string'):[]}catch(e){return[]}}
-function setProjects(p){const saved=writeStored(STORE,JSON.stringify(p));renderProjects();return saved}
+function parseProjectStore(raw){
+  const p=JSON.parse(raw||'[]');
+  if(!Array.isArray(p))throw new Error('Project store is not an array.');
+  return p.filter(x=>x&&typeof x.text==='string').map(x=>({id:String(x.id||''),name:String(x.name||'Untitled project').slice(0,240),text:String(x.text),updated:Number(x.updated)||0}))
+}
+function getProjects(){
+  try{return parseProjectStore(readStored(STORE)||'[]')}
+  catch(e){
+    try{
+      const recovered=parseProjectStore(readStored(STORE_BACKUP)||'[]');
+      if(recovered.length){notice('Recovered projects from the local backup after detecting damaged project data.');return recovered}
+    }catch(_){}
+    return[]
+  }
+}
+function setProjects(p){
+  const clean=Array.isArray(p)?p:[];
+  try{const current=readStored(STORE);if(current)parseProjectStore(current),writeStored(STORE_BACKUP,current)}catch(_){}
+  const saved=writeStored(STORE,JSON.stringify(clean));renderProjects();return saved
+}
 function renderProjects(){
   const p=getProjects(); $('projectMetric').textContent=p.length;
   $('projectList').innerHTML=p.length?'':'<div class="small">No saved projects yet.</div>';
@@ -452,9 +496,10 @@ async function zipEntry(arrayBuffer, wanted){
   let p=cdOffset;
   for(let n=0;n<count;n++){
     if(v.getUint32(p,true)!==0x02014b50) throw new Error('Invalid ZIP directory.');
-    const method=u16(v,p+10), compSize=u32(v,p+20), nameLen=u16(v,p+28), extraLen=u16(v,p+30), commentLen=u16(v,p+32), localOffset=u32(v,p+42);
+    const method=u16(v,p+10), compSize=u32(v,p+20), uncompSize=u32(v,p+24), nameLen=u16(v,p+28), extraLen=u16(v,p+30), commentLen=u16(v,p+32), localOffset=u32(v,p+42);
     const name=new TextDecoder().decode(u8.slice(p+46,p+46+nameLen));
     if(name===wanted){
+      if(uncompSize>MAX_DOCX_XML_BYTES)throw new Error('Document XML is too large to process safely on this device.');
       if(v.getUint32(localOffset,true)!==0x04034b50) throw new Error('Invalid ZIP entry.');
       const ln=u16(v,localOffset+26), le=u16(v,localOffset+28), dataStart=localOffset+30+ln+le;
       const data=u8.slice(dataStart,dataStart+compSize);
@@ -470,7 +515,10 @@ async function extractDocx(arrayBuffer){
   const xmlBytes=await zipEntry(arrayBuffer,'word/document.xml');
   const xml=new TextDecoder('utf-8').decode(xmlBytes);
   const doc=new DOMParser().parseFromString(xml,'application/xml');
-  return [...doc.getElementsByTagNameNS('*','p')].map(p=>[...p.getElementsByTagNameNS('*','t')].map(t=>t.textContent||'').join('')).filter(Boolean).join('\n\n').trim();
+  if(doc.getElementsByTagName('parsererror').length)throw new Error('The DOCX document XML is malformed.');
+  const text=[...doc.getElementsByTagNameNS('*','p')].map(p=>[...p.getElementsByTagNameNS('*','t')].map(t=>t.textContent||'').join('')).filter(Boolean).join('\n\n').trim();
+  if(!text)throw new Error('No readable document text was found.');
+  return text
 }
 function decodePdfLiteral(s){
   return s.replace(/\\([nrtbf()\\])/g,(m,c)=>({n:'\n',r:'\r',t:'\t',b:'\b',f:'\f','(':'(',')':')','\\':'\\'}[c]||c))
@@ -588,8 +636,14 @@ async function cancelOcr(){
   setOcrProgress('OCR cancelled.',0,false);$('uploadStatus').textContent='OCR cancelled. Your file is still available; choose Fast or Accurate and try again.'
 }
 function ocrScale(width,height,mode){
-  const max=Math.max(width,height)||1,target=mode==='accurate'?1900:1100,cap=mode==='accurate'?1.9:1.2;
-  return Math.max(.45,Math.min(cap,target/max))
+  const w=Math.max(1,width||1),h=Math.max(1,height||1),max=Math.max(w,h),cores=Math.max(2,navigator.hardwareConcurrency||4);
+  const target=mode==='accurate'?1900:(cores<=4?1000:1250),cap=mode==='accurate'?1.9:1.2,maxPixels=mode==='accurate'?3200000:1800000;
+  return Math.max(.35,Math.min(cap,target/max,Math.sqrt(maxPixels/(w*h))))
+}
+function ocrTextQuality(text){
+  const t=String(text||'').trim();if(!t)return 0;
+  const useful=(t.match(/[A-Za-z0-9]/g)||[]).length,noise=(t.match(/[^\sA-Za-z0-9.,;:!?'"()\-]/g)||[]).length;
+  return Math.max(0,Math.min(1,(useful/Math.max(1,t.length))-(noise/Math.max(1,t.length))))
 }
 async function recognizeCanvas(canvas,label,mode){
   if(ocrCancelled)throw new Error('OCR cancelled.');
@@ -616,10 +670,17 @@ async function imageFileCanvas(file,mode){
   return canvas
 }
 async function ocrImageFile(file,mode,onProgress){
-  ocrCancelled=false;const canvas=await imageFileCanvas(file,mode);
+  ocrCancelled=false;let canvas=await imageFileCanvas(file,mode);
   if(onProgress)onProgress('Preparing image OCR…',5);
   try{
-    const text=await recognizeCanvas(canvas,'Recognizing image text…',mode);
+    let text=await recognizeCanvas(canvas,'Recognizing image text…',mode);
+    if(mode==='fast'&&(text.length<12||ocrTextQuality(text)<.45)&&!ocrCancelled){
+      canvas.width=1;canvas.height=1;
+      if(onProgress)onProgress('Fast scan was weak • retrying sharper OCR…',55);
+      canvas=await imageFileCanvas(file,'accurate');
+      const retry=await recognizeCanvas(canvas,'Sharper OCR retry…','accurate');
+      if(ocrTextQuality(retry)>ocrTextQuality(text)||retry.length>text.length)text=retry
+    }
     if(text.length<3)throw new Error('OCR did not recognize readable text.');
     return text
   }finally{canvas.width=1;canvas.height=1}
@@ -679,6 +740,7 @@ async function runPendingImageOcr(){
 }
 async function handleFile(e){
   const f=e.target.files&&e.target.files[0]; if(!f)return;
+  if(f.size>MAX_FILE_BYTES){$('uploadStatus').textContent='File is too large for safe in-browser processing (50 MB limit).';try{e.target.value=''}catch(_){};return}
   $('uploadStatus').textContent='Reading '+f.name+'…';
   $('imagePreview').style.display='none';
   const ext=(f.name.split('.').pop()||'').toLowerCase();
@@ -866,10 +928,12 @@ function applyRewrite(){if(!rewriteBuffer){alert('Create a revision first.');ret
 
 function verifyCitations(){
   const t=$('draft').value;
-  const urls=t.match(/https?:\/\/\S+/g)||[], doi=t.match(/\b10\.\d{4,9}\/[-._;()/:A-Z0-9]+\b/ig)||[], bracket=t.match(/\[[0-9]+\]/g)||[];
-  const numeric=(sents(t).filter(x=>/\b\d+(\.\d+)?%|\b\d{4}\b|\$\d+/.test(x)));
-  let out='Local citation structure check\n\nURLs found: '+urls.length+'\nDOIs found: '+doi.length+'\nBracket citations found: '+bracket.length+'\nPotential factual/numeric claims: '+numeric.length;
-  if(numeric.length&&!urls.length&&!doi.length&&!bracket.length)out+='\n\n⚠ Several factual claims appear to have no nearby citation structure.';
+  const urls=t.match(/https?:\/\/\S+/g)||[],doi=t.match(/\b10\.\d{4,9}\/[-._;()/:A-Z0-9]+\b/ig)||[],bracket=t.match(/\[[0-9]+\]/g)||[];
+  const parenthetical=t.match(/\([^()\n]{0,140}\b(?:19|20)\d{2}[a-z]?[^()\n]{0,80}\)/gi)||[];
+  const numeric=sents(t).filter(x=>/\b\d+(\.\d+)?%|\b(?:19|20)\d{2}\b|\$\d+/.test(x));
+  const refs=/\b(references|works cited|bibliography)\b/i.test(t);
+  let out='Citation structure\n\nURLs: '+urls.length+'\nDOIs: '+doi.length+'\nBracket citations: '+bracket.length+'\nAuthor-date citations: '+parenthetical.length+'\nReference section: '+(refs?'found':'not detected')+'\nClaims needing source review: '+numeric.length;
+  if(numeric.length&&!urls.length&&!doi.length&&!bracket.length&&!parenthetical.length)out+='\n\nReview: factual/numeric claims appear without visible citation markers.';
   $('citationResult').textContent=out
 }
 function claimSentences(text){
@@ -934,7 +998,7 @@ function iphoneCanvasLensRuntime(){
   }
   function parse(el,i){
     const options=[],controls=[...el.querySelectorAll('input[type="radio"],input[type="checkbox"],[role="radio"],[role="checkbox"]')].filter(visible);
-    controls.forEach(x=>{const text=labelText(x,el);if(text&&!options.some(o=>o.text===text))options.push({label:String.fromCharCode(65+options.length),text:text.slice(0,500),selected:!!x.checked||x.getAttribute('aria-checked')==='true',feedback:feedback(x,el)})});
+    controls.forEach(x=>{const text=labelText(x,el);if(text&&!options.some(o=>o.text===text))options.push({label:String.fromCharCode(65+options.length),text:text.slice(0,500),feedback:feedback(x,el)})});
     const r=el.getBoundingClientRect(),vh=Math.max(1,innerHeight||document.documentElement.clientHeight||1);
     return {el,index:i+1,question:questionText(el,i),options,inView:r.bottom>0&&r.top<vh,distance:Math.round(Math.abs((r.top+r.bottom)/2-vh/2))}
   }
@@ -954,14 +1018,13 @@ function iphoneCanvasLensRuntime(){
     return norm(text).slice(0,14000)
   }
   function response(item,ctx,notes){
-    const confirmed=item.options.find(o=>o.feedback==='correct'),wrong=item.options.find(o=>o.feedback==='incorrect'&&o.selected);
-    if(confirmed)return {headline:'Canvas feedback identifies: '+confirmed.label+' — '+confirmed.text,detail:'Canvas marks this choice as correct on the current page.',evidence:''};
-    if(wrong)return {headline:'Canvas feedback: '+wrong.label+' — '+wrong.text+' is marked incorrect.',detail:'The page does not expose a confirmed correct choice, so Lens will not guess.',evidence:''};
+    const confirmed=item.options.find(o=>o.feedback==='correct');
+    if(confirmed)return {headline:'Confirmed: '+confirmed.label+' — '+confirmed.text,detail:'Official Canvas review feedback.',evidence:''};
     if(!item.options.length)return {headline:'Open-response item detected.',detail:'Use Review notes to add source material for this prompt.',evidence:''};
     const sentences=(ctx+' '+notes).split(/(?<=[.!?])\s+/).map(norm).filter(s=>s.length>18&&s.length<700);
-    const ranked=item.options.map(o=>{let best=0,ev='';sentences.forEach(s=>{const score=overlap(o.text,s)*.65+overlap(item.question,s)*.35;if(score>best){best=score;ev=s}});return{...o,score:best,evidence:ev}}).sort((a,b)=>b.score-a.score);
-    const best=ranked[0],second=ranked[1],clear=best&&best.score>=.25&&(!second||best.score-second.score>=.08);
-    return clear?{headline:'Best-supported by visible evidence: '+best.label+' — '+best.text,detail:'Evidence match only; review the evidence before using it.',evidence:best.evidence}:{headline:'No single choice is supported clearly enough by visible evidence.',detail:'Lens will not guess without supporting evidence.',evidence:''}
+    const ranked=sentences.map(s=>({text:s,score:overlap(item.question,s)})).sort((a,b)=>b.score-a.score);
+    const best=ranked[0];
+    return best&&best.score>0?{headline:'Hint: '+best.text.slice(0,240),detail:'',evidence:''}:{headline:'Hint: focus on '+words(item.question).slice(0,5).join(', ')+'.',detail:'',evidence:''}
   }
   let root=document.createElement('div');root.id=ID;root.setAttribute('data-provenance-lens','true');
   root.style.cssText='position:fixed;right:10px;bottom:10px;width:min(390px,calc(100vw - 20px));max-height:70vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.45);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto';
@@ -971,10 +1034,10 @@ function iphoneCanvasLensRuntime(){
   const body=root.querySelector('[data-b]');let collapsed=false,left=false,last='',notes='';try{notes=localStorage.getItem('provenance-canvas-lens-notes-v2')||''}catch(_){}
   function render(){
     const all=unique(),ctx=context(all),shown=all.slice(0,100);
-    const sig=JSON.stringify(shown.map(x=>[x.question,x.options.map(o=>[o.text,o.selected,o.feedback])]))+'|'+notes;if(sig===last)return;last=sig;body.innerHTML='';
-    const meta=document.createElement('div');meta.style.cssText='font-size:11px;color:#aeb8cb;margin-bottom:7px';meta.textContent=all.length?(all.length+' unique question'+(all.length===1?'':'s')+' • '+(all.length>100?'first 100 listed':'all listed')):'No question detected';body.appendChild(meta);
+    const sig=JSON.stringify(shown.map(x=>[x.question,x.options.map(o=>[o.text,o.feedback])]))+'|'+notes;if(sig===last)return;last=sig;body.innerHTML='';
+    const meta=document.createElement('div');meta.style.cssText='font-size:11px;color:#aeb8cb;margin-bottom:7px';meta.textContent=all.length?(all.length+' unique question'+(all.length===1?'':'s')+' • '+(all.length>100?'first 100 listed':'all listed')):'No question detected';body.appendChild(meta);const filter=document.createElement('input');filter.type='search';filter.placeholder='Filter questions…';filter.setAttribute('aria-label','Filter Canvas Lens questions');filter.style.cssText='box-sizing:border-box;width:100%;margin:0 0 7px;padding:8px 9px;border:1px solid #3a455e;border-radius:8px;background:#0a0f17;color:#fff;font-size:12px';body.appendChild(filter);
     const nd=document.createElement('details');nd.style.cssText='margin-bottom:7px;border:1px solid #263147;border-radius:9px;padding:6px';const ns=document.createElement('summary');ns.textContent='Review notes';ns.style.cssText='cursor:pointer;font-size:12px;font-weight:700';const ta=document.createElement('textarea');ta.value=notes;ta.placeholder='Optional class notes or source material…';ta.style.cssText='box-sizing:border-box;width:100%;min-height:62px;margin-top:6px;background:#0a0f17;color:#fff;border:1px solid #3a455e;border-radius:8px;padding:7px';const ap=document.createElement('button');ap.textContent='Apply notes';ap.style.cssText='margin-top:6px;border:1px solid #3a455e;border-radius:8px;background:#222b3e;color:#fff;padding:6px 8px';ap.onclick=()=>{notes=ta.value.trim();try{localStorage.setItem('provenance-canvas-lens-notes-v2',notes)}catch(_){};last='';render()};nd.append(ns,ta,ap);body.appendChild(nd);
-    shown.forEach((it,j)=>{const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:13px;padding:9px;margin:7px 0;background:#0c1119';const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35';q.textContent=(it.index||j+1)+'. '+it.question.slice(0,450);const ans=response(it,ctx,notes);const a=document.createElement('div');a.style.cssText='margin-top:7px;padding:8px;border-radius:9px;background:#141c29';const tag=document.createElement('div');tag.style.cssText='font-size:10px;color:#63e6be;font-weight:800;text-transform:uppercase';tag.textContent='Lens review';const hd=document.createElement('div');hd.style.cssText='margin-top:4px;font-weight:800';hd.textContent=ans.headline;const dt=document.createElement('div');dt.style.cssText='margin-top:4px;color:#aeb8cb;font-size:12px';dt.textContent=ans.detail;a.append(tag,hd,dt);if(ans.evidence){const ev=document.createElement('details'),sm=document.createElement('summary'),tx=document.createElement('div');sm.textContent='Evidence';tx.style.cssText='margin-top:5px;color:#aeb8cb;font-size:12px';tx.textContent=ans.evidence;ev.append(sm,tx);a.appendChild(ev)}box.append(q,a);body.appendChild(box)});
+    shown.forEach((it,j)=>{const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:13px;padding:9px;margin:7px 0;background:#0c1119';const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35';q.textContent=(it.index||j+1)+'. '+it.question.slice(0,450);const ans=response(it,ctx,notes);const a=document.createElement('div');a.style.cssText='margin-top:7px;padding:8px;border-radius:9px;background:#141c29';const tag=document.createElement('div');tag.style.cssText='font-size:10px;color:#63e6be;font-weight:800;text-transform:uppercase';tag.textContent='Lens review';const hd=document.createElement('div');hd.style.cssText='margin-top:4px;font-weight:800';hd.textContent=ans.headline;const dt=document.createElement('div');dt.style.cssText='margin-top:4px;color:#aeb8cb;font-size:12px';dt.textContent=ans.detail;a.append(tag,hd,dt);if(ans.evidence){const ev=document.createElement('details'),sm=document.createElement('summary'),tx=document.createElement('div');sm.textContent='Evidence';tx.style.cssText='margin-top:5px;color:#aeb8cb;font-size:12px';tx.textContent=ans.evidence;ev.append(sm,tx);a.appendChild(ev)}box.append(q,a);box.dataset.lensQuestion=norm(it.question+' '+it.options.map(o=>o.text).join(' ')).toLowerCase();body.appendChild(box)});filter.oninput=()=>{const term=norm(filter.value).toLowerCase();body.querySelectorAll('[data-lens-question]').forEach(card=>{card.style.display=!term||card.dataset.lensQuestion.includes(term)?'block':'none'})};
   }
   const onScroll=()=>{clearTimeout(window.__provenanceLensTimer);window.__provenanceLensTimer=setTimeout(()=>{last='';render()},220)};
   root.querySelector('[data-r]').onclick=()=>{last='';render()};root.querySelector('[data-s]').onclick=()=>{left=!left;root.style.right=left?'auto':'10px';root.style.left=left?'10px':'auto'};root.querySelector('[data-m]').onclick=()=>{collapsed=!collapsed;body.style.display=collapsed?'none':'block';root.style.width=collapsed?'145px':'min(390px,calc(100vw - 20px))';root.querySelector('[data-m]').textContent=collapsed?'+':'−'};root.querySelector('[data-x]').onclick=()=>{window.removeEventListener('scroll',onScroll);root.remove()};
@@ -1017,174 +1080,83 @@ function sanitizeCanvasPayload(payload){
   const p=payload&&typeof payload==='object'?payload:{};
   const items=(Array.isArray(p.items)?p.items:[]).slice(0,100).map(function(item,i){
     const options=(Array.isArray(item&&item.options)?item.options:[]).slice(0,20).map(function(o,j){
-      return {label:String((o&&o.label)||String.fromCharCode(65+j)).slice(0,8),text:String((o&&o.text)||'').slice(0,1800)}
+      return {label:String((o&&o.label)||String.fromCharCode(65+j)).slice(0,8),text:String((o&&o.text)||'').slice(0,1800),feedback:String((o&&o.feedback)||'').slice(0,16)}
     });
     return {index:i+1,question:String((item&&item.question)||('Question '+(i+1))).slice(0,5000),options:options,openResponse:!!(item&&item.openResponse)}
   });
   return {title:String(p.title||'Canvas page').slice(0,500),url:String(p.url||'').slice(0,3000),context:String(p.context||'').slice(0,50000),items:items,meta:p.meta&&typeof p.meta==='object'?p.meta:{}}
 }
-function handleCanvasPayload(payload,sourceLabel){
-  const p=sanitizeCanvasPayload(payload);
-  if(!p.items.length)return false;
-  $('canvasQuestions').value=p.items.map(function(item,i){
-    const q=(i+1)+'. '+item.question;
-    const opts=item.options.map(function(o,j){return (o.label||String.fromCharCode(65+j))+'. '+o.text}).join('\n');
-    return q+(opts?'\n'+opts:'');
-  }).join('\n\n');
-  $('canvasNotes').value=p.context;
-  studyItems=p.items.map(function(item,i){
-    return {id:'study-'+Date.now()+'-'+i,question:item.question,options:item.options.map(function(o,j){return {label:o.label||String.fromCharCode(65+j),text:o.text}}),approved:false}
+function trustedCanvasOrigin(origin){
+  if(!origin)return false;
+  try{
+    const u=new URL(origin);
+    if(u.origin===location.origin)return true;
+    return u.protocol==='https:'&&(u.hostname==='canvas.sdsu.edu'||u.hostname.endsWith('.instructure.com'))
+  }catch(_){return false}
+}
+function canvasKeyTerms(question){
+  const stop=new Set(['the','and','for','with','that','this','what','which','are','was','were','from','into','does','not','your','you','how','why','who']);
+  return words(String(question||'').toLowerCase()).filter(x=>x.length>3&&!stop.has(x)).slice(0,6)
+}
+function canvasReviewCue(item){
+  const confirmed=(item.options||[]).find(o=>o.feedback==='correct');
+  if(confirmed)return {kind:'confirmed',text:'Confirmed: '+confirmed.label+' — '+confirmed.text};
+  const evidence=evidenceFor(item.question,1);
+  if(evidence.length)return {kind:'hint',text:'Hint: '+evidence[0].text.replace(/\s+/g,' ').slice(0,260)};
+  const terms=canvasKeyTerms(item.question);
+  return {kind:'hint',text:'Hint: focus on '+(terms.length?terms.join(', '):'the key concept in the prompt')+'.'}
+}
+function renderCanvasReview(){
+  const out=$('canvasReviewResults');if(!out)return;out.innerHTML='';
+  if(!studyItems.length){out.innerHTML='<div class="small">No Canvas questions received yet.</div>';return}
+  studyItems.forEach((item,i)=>{
+    const cue=canvasReviewCue(item),card=document.createElement('div');card.className='canvas-result';card.dataset.reviewText=(item.question+' '+cue.text).toLowerCase();
+    const q=document.createElement('strong');q.textContent=(i+1)+'. '+item.question;
+    const line=document.createElement('div');line.className='cue '+cue.kind;line.textContent=cue.text;
+    card.append(q,line);out.append(card)
   });
-  const status=$('canvasBridgeStatus');
-  if(status)status.textContent='Canvas Lens connected • '+p.items.length+' item'+(p.items.length===1?'':'s')+' received'+(sourceLabel?' • '+sourceLabel:'');
-  renderStudyQueue();
-  showTab('canvas');
-  notice('Canvas page captured automatically. Review the detected items below.');
-  return true;
+  filterCanvasReview()
+}
+function filterCanvasReview(){
+  const out=$('canvasReviewResults'),field=$('canvasReviewFilter');if(!out||!field)return;
+  const term=field.value.trim().toLowerCase();out.querySelectorAll('.canvas-result').forEach(card=>card.style.display=!term||card.dataset.reviewText.includes(term)?'grid':'none')
+}
+function handleCanvasPayload(payload,sourceLabel){
+  const p=sanitizeCanvasPayload(payload);if(!p.items.length)return false;
+  $('canvasNotes').value=p.context||$('canvasNotes').value;
+  studyItems=p.items.map((item,i)=>({id:'review-'+Date.now()+'-'+i,question:item.question,options:item.options.map((o,j)=>({label:o.label||String.fromCharCode(65+j),text:o.text,feedback:o.feedback||''})),openResponse:item.openResponse}));
+  const status=$('canvasBridgeStatus');if(status)status.textContent='Canvas Lens connected • '+p.items.length+' question'+(p.items.length===1?'':'s')+' received'+(sourceLabel?' • '+sourceLabel:'');
+  renderCanvasReview();showTab('canvas');notice('Canvas review updated.');
+  return true
 }
 function importCanvasHash(){
   if(location.hash==='#canvas-ready')return false;
   if(!location.hash.startsWith('#canvas='))return false;
   try{
-    const payload=JSON.parse(decodeURIComponent(location.hash.slice(8)));
-    const ok=handleCanvasPayload(payload,'legacy bridge');
-    history.replaceState(null,'',location.pathname+location.search);
-    return ok;
-  }catch(err){
-    const status=$('canvasBridgeStatus');if(status)status.textContent='Canvas Lens import failed';
-    notice('Canvas Lens import could not be decoded.');return false;
-  }
+    const payload=JSON.parse(decodeURIComponent(location.hash.slice(8))),ok=handleCanvasPayload(payload,'legacy bridge');
+    history.replaceState(null,'',location.pathname+location.search);return ok
+  }catch(err){const status=$('canvasBridgeStatus');if(status)status.textContent='Canvas Lens import failed';notice('Canvas Lens import could not be decoded.');return false}
 }
 window.addEventListener('message',function(event){
-  const data=event&&event.data;
-  if(!data||data.type!=='PROVENANCE_CANVAS_CAPTURE'||!data.payload)return;
+  const data=event&&event.data;if(!data||data.type!=='PROVENANCE_CANVAS_CAPTURE'||!data.payload||!trustedCanvasOrigin(event.origin))return;
   const ok=handleCanvasPayload(data.payload,'live page bridge');
   if(ok&&location.hash==='#canvas-ready')history.replaceState(null,'',location.pathname+location.search);
-  try{if(event.source&&typeof event.source.postMessage==='function')event.source.postMessage({type:'PROVENANCE_CANVAS_ACK',ok:!!ok},event.origin||'*')}catch(e){}
+  try{if(event.source&&typeof event.source.postMessage==='function')event.source.postMessage({type:'PROVENANCE_CANVAS_ACK',ok:!!ok},event.origin)}catch(_){}
 });
 let studyItems=[];
 function tokenizeStudy(s){
   const stop=new Set(['the','a','an','and','or','but','of','to','in','on','for','is','are','was','were','be','with','that','this','it','as','by','from','at','which','what','why','how','when','where','who']);
-  return words(String(s||'').toLowerCase()).map(function(x){return x.replace(/['’]/g,'')}).filter(function(x){return x.length>2&&!stop.has(x)})
+  return words(String(s||'').toLowerCase()).map(x=>x.replace(/['’]/g,'')).filter(x=>x.length>2&&!stop.has(x))
 }
-function splitStudyQuestions(raw){
-  const text=String(raw||'').replace(/\r/g,'').trim(); if(!text)return[];
-  const lines=text.split('\n');
-  const blocks=[];let cur=[];
-  function flush(){if(cur.length){blocks.push(cur.join('\n').trim());cur=[]}}
-  lines.forEach(function(line){
-    const start=/^\s*(?:Q(?:uestion)?\s*)?\d+[.)\-:]\s+/.test(line);
-    if(start&&cur.length)flush();
-    if(line.trim()===''&&cur.length&&cur.some(function(x){return /^[A-H][.)\-:]\s+/.test(x.trim())})){flush();return}
-    if(line.trim()!=='')cur.push(line);
-  });flush();
-  if(blocks.length===1&&text.split(/\n\s*\n/).length>1)return text.split(/\n\s*\n/).map(function(x){return x.trim()}).filter(Boolean);
-  return blocks;
-}
-function parseStudyBlock(block,index){
-  const lines=block.split('\n').map(function(x){return x.trim()}).filter(Boolean);
-  let q=lines.shift()||('Question '+(index+1));
-  q=q.replace(/^\s*(?:Q(?:uestion)?\s*)?\d+[.)\-:]\s*/i,'');
-  const options=[];
-  const remain=[];
-  lines.forEach(function(line){
-    const m=line.match(/^([A-H])[.)\-:]\s*(.+)$/i);
-    if(m)options.push({label:m[1].toUpperCase(),text:m[2]});else remain.push(line);
-  });
-  if(remain.length)q+=' '+remain.join(' ');
-  return {id:'study-'+Date.now()+'-'+index,question:q,options:options,approved:false};
-}
-function noteSentences(){
-  return sents($('canvasNotes').value||'').filter(function(x){return words(x).length>3})
-}
+function noteSentences(){return sents($('canvasNotes').value||'').filter(x=>words(x).length>3)}
 function overlapScore(a,b){
-  const A=new Set(tokenizeStudy(a)),B=new Set(tokenizeStudy(b));if(!A.size||!B.size)return 0;
-  let hit=0;A.forEach(function(x){if(B.has(x))hit++});
-  return Math.min(100,Math.round((hit/Math.max(1,Math.min(A.size,B.size)))*100))
+  const A=new Set(tokenizeStudy(a)),B=new Set(tokenizeStudy(b));if(!A.size||!B.size)return 0;let hit=0;A.forEach(x=>{if(B.has(x))hit++});return Math.min(100,Math.round((hit/Math.max(1,Math.min(A.size,B.size)))*100))
 }
 function evidenceFor(question,limit){
-  const notes=noteSentences();
-  return notes.map(function(s){return {text:s,score:overlapScore(question,s)}})
-    .sort(function(a,b){return b.score-a.score})
-    .filter(function(x){return x.score>0})
-    .slice(0,limit||4)
+  return noteSentences().map(s=>({text:s,score:overlapScore(question,s)})).sort((a,b)=>b.score-a.score).filter(x=>x.score>0).slice(0,limit||2)
 }
-function optionSupport(item,option,evidence){
-  let best=0;
-  evidence.forEach(function(e){
-    const direct=overlapScore(option.text,e.text),q=overlapScore(item.question,e.text);
-    const low=e.text.toLowerCase(),exact=low.includes(option.text.toLowerCase())?100:0;
-    best=Math.max(best,Math.round(direct*.55+q*.25+exact*.20))
-  });
-  return Math.min(100,best)
-}
-function makeStudySuggestion(item){
-  const evidence=evidenceFor(item.question,4);
-  if(item.options.length){
-    const ranked=item.options.map(function(o){return {label:o.label,text:o.text,support:optionSupport(item,o,evidence)}})
-      .sort(function(a,b){return b.support-a.support});
-    const best=ranked[0],second=ranked[1];
-    const clear=best&&best.support>=25&&(!second||best.support-second.support>=8);
-    const recommended=clear?best.label:null;
-    return {type:'choices',evidence:evidence,options:item.options,recommended:recommended,recommendedText:clear?best.text:''};
-  }
-  if(!evidence.length)return {type:'open',draft:'Add notes or source material so the app can build a supported response outline.',evidence:[]};
-  const top=evidence.map(function(e){return e.text.replace(/\s+/g,' ').trim()}).slice(0,2);
-  const draft='Response outline: '+top.join(' ');
-  return {type:'open',draft:draft,evidence:evidence};
-}
-function buildStudyQueue(){
-  const blocks=splitStudyQuestions($('canvasQuestions').value);
-  studyItems=blocks.map(parseStudyBlock);
-  if(!studyItems.length){$('studyQueue').innerHTML='<div class="small">Add at least one question first.</div>';return}
-  renderStudyQueue();
-  showTab('canvas');
-  notice(studyItems.length+' study item'+(studyItems.length===1?'':'s')+' ready for one-by-one review.')
-}
-function renderStudyQueue(){
-  const out=$('studyQueue');out.innerHTML='';
-  if(!studyItems.length){out.innerHTML='<div class="small">No questions loaded.</div>';return}
-  studyItems.forEach(function(item,idx){
-    const sug=makeStudySuggestion(item);
-    const card=document.createElement('div');card.className='study-card'+(item.approved?' approved':'');
-    const q=document.createElement('div');q.className='study-q';q.textContent=(idx+1)+'. '+item.question;card.appendChild(q);
-    if(sug.type==='choices'){
-      const hint=document.createElement('div');hint.className='small';
-      hint.textContent=sug.recommended?'Best-supported choice from the notes is highlighted below. Review the evidence before using it.':'The current notes do not support one choice clearly enough to recommend it.';
-      card.appendChild(hint);
-      const grid=document.createElement('div');grid.className='choice-grid';
-      sug.options.forEach(function(o){
-        const row=document.createElement('div');row.className='choice-row'+(sug.recommended===o.label?' recommended':'');
-        const left=document.createElement('strong');left.textContent=o.label;
-        const body=document.createElement('span');body.textContent=o.text;
-        if(sug.recommended===o.label){const tag=document.createElement('div');tag.className='choice-tag';tag.textContent='Best-supported by notes';body.appendChild(tag)}
-        row.append(left,body);grid.appendChild(row);
-      });card.appendChild(grid);
-    }else{
-      const r=document.createElement('div');r.className='result';r.style.minHeight='80px';r.textContent=sug.draft;card.appendChild(r);
-    }
-    const ev=document.createElement('div');ev.className='study-evidence';
-    ev.textContent=sug.evidence.length?'Supporting note matches:\n'+sug.evidence.map(function(e){return '• '+e.text}).join('\n'):'No matching notes found yet.';
-    card.appendChild(ev);
-    const bar=document.createElement('div');bar.className='toolbar';
-    const approve=document.createElement('button');approve.className='primary';approve.textContent=item.approved?'Approved':'Approve & copy';
-    approve.onclick=function(){approveStudyItem(item.id,sug)};
-    const review=document.createElement('button');review.className='ghost';review.textContent='Needs review';review.onclick=function(){item.approved=false;renderStudyQueue()};
-    bar.append(approve,review);card.appendChild(bar);out.appendChild(card);
-  })
-}
-async function approveStudyItem(id,sug){
-  const item=studyItems.find(function(x){return x.id===id});if(!item)return;
-  let text='';
-  if(sug.type==='open')text=sug.draft;
-  else if(sug.recommended)text='Review recommendation: '+sug.recommended+'. '+sug.recommendedText+'\nQuestion: '+item.question;
-  else text='No single choice is strongly supported by the current notes.\nQuestion: '+item.question;
-  item.approved=true;
-  try{await navigator.clipboard.writeText(text);notice('Approved and copied. Review it before entering anything elsewhere.')}catch(e){notice('Approved. Clipboard access was unavailable; select the text manually.')}
-  renderStudyQueue()
-}
-function clearStudyQueue(){studyItems=[];$('studyQueue').innerHTML='<div class="small">No questions loaded.</div>';notice('Study queue cleared.')}
-function loadDraftAsNotes(){$('canvasNotes').value=$('draft').value;notice('Current draft loaded as study notes.')}
+function clearCanvasReview(){studyItems=[];if($('canvasReviewFilter'))$('canvasReviewFilter').value='';renderCanvasReview();const s=$('canvasBridgeStatus');if(s)s.textContent='Waiting for Canvas Lens';notice('Canvas review cleared.')}
+function loadDraftAsNotes(){$('canvasNotes').value=$('draft').value;renderCanvasReview();notice('Current draft loaded as source notes.')}
 function studyAssist(){
   const q=$('studyQuestion').value.trim();if(!q){$('studyResult').textContent='Add a question first.';return}
   $('studyResult').textContent='Local Study Assist\n\n1. What is the prompt asking you to do?\n'+q+'\n\n2. Identify the key terms or evidence you already have.\n3. Write your own answer in one sentence.\n4. Add supporting detail.\n5. Check whether every part of the prompt was answered.\n\nCloud AI is optional for deeper explanations; this local mode does not submit quizzes or graded work.'
@@ -1344,9 +1316,7 @@ function runSelfTest(){
   t('Citation verifier',()=>typeof verifyCitations==='function');
   t('Claim checker',()=>typeof checkClaims==='function');
   t('Word filter',()=>typeof findFiltered==='function'&&typeof removeFiltered==='function');
-  t('Study Assist',()=>typeof studyAssist==='function');
-  t('Canvas Study parser',()=>typeof splitStudyQuestions==='function'&&parseStudyBlock('1. Example question\nA. One\nB. Two',0).options.length===2);
-  t('Canvas approval gate',()=>typeof approveStudyItem==='function'&&Array.isArray(studyItems));
+  t('Canvas concise review',()=>typeof renderCanvasReview==='function'&&typeof canvasReviewCue==='function'&&Array.isArray(studyItems));
   t('Canvas Lens bridge',()=>typeof importCanvasHash==='function'&&typeof handleCanvasPayload==='function'&&typeof canvasBookmarklet==='function'&&typeof renderCanvasSetup==='function'&&typeof legacyCopyText==='function'&&canvasBookmarklet().startsWith('javascript:'));
   t('Humanize controls',()=>!!$('rewriteTone')&&!!$('humanizeStrength')&&typeof humanizeLocal==='function');
   t('Advanced writing signals',()=>!!$('burstMetric')&&!!$('lexicalMetric')&&!!$('analysisDetail'));
@@ -1392,7 +1362,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && window.isSecureContext) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.1.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.2.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
 }
 </script>
 </body>

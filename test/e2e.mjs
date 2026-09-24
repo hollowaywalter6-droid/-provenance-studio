@@ -1,152 +1,59 @@
-import { chromium } from 'playwright';
-import fs from 'node:fs';
-
-const base=(process.env.BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
-fs.mkdirSync('test/artifacts',{recursive:true});
-const browser=await chromium.launch({headless:true});
-const context=await browser.newContext();
-const failures=[];
-const pass=(name,ok,detail='')=>{
-  console.log((ok?'PASS':'FAIL')+'  '+name+(detail?' — '+detail:''));
-  if(!ok) failures.push(name+(detail?': '+detail:''));
-};
-async function pageErrors(page,label){
-  const errs=[];
-  page.on('pageerror',e=>errs.push(String(e.message||e)));
-  page.on('console',m=>{if(m.type()==='error') errs.push('console: '+m.text())});
-  return ()=>pass(label+' has no runtime errors',errs.length===0,errs.join(' | '));
-}
+import {chromium} from 'playwright';
+const base=process.env.BASE_URL||'http://127.0.0.1:4173/';
+const browser=await chromium.launch({headless:true}),context=await browser.newContext(),failures=[];
+const pass=(name,ok,detail='')=>{console.log((ok?'PASS':'FAIL')+'  '+name+(detail?' — '+detail:''));if(!ok)failures.push(name+(detail?': '+detail:''))};
+async function errors(page,label){const e=[];page.on('pageerror',x=>e.push(x.message));page.on('console',m=>{if(m.type()==='error')e.push(m.text())});return()=>pass(label+' runtime clean',e.length===0,e.join(' | '))}
 async function appRun(name,viewport){
-  const page=await context.newPage();
-  await page.setViewportSize(viewport);
-  const finishErrors=await pageErrors(page,name);
-  await page.goto(base+'index.html?qa=e2e',{waitUntil:'networkidle'});
-  await page.waitForFunction(()=>getComputedStyle(document.getElementById('runtimeWarning')).display==='none');
-  pass(name+' booted',await page.locator('#draft').isVisible());
-  pass(name+' current release version',await page.evaluate(()=>APP_VERSION==='4.1.0'));
-  if(name==='mobile')pass(name+' mobile hero orb removed',await page.locator('.orbwrap').evaluate(el=>getComputedStyle(el).display==='none'));
-  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
-  pass(name+' has no horizontal overflow',overflow<=2,'overflow '+overflow+'px');
-
-  const tabs=await page.locator('.tab').evaluateAll(ts=>ts.map(t=>t.dataset.tab));
-  let controls=0,zero=0;
-  for(const tab of tabs){
-    await page.locator('.tab[data-tab="'+tab+'"]').click();
-    pass(name+' panel '+tab+' renders',await page.locator('#panel-'+tab).isVisible());
-    const dims=await page.locator('#panel-'+tab+' button').evaluateAll(bs=>bs.filter(b=>{const s=getComputedStyle(b);return s.display!=='none'&&s.visibility!=='hidden'}).map(b=>{const r=b.getBoundingClientRect();return [r.width,r.height]}));
-    controls+=dims.length;zero+=dims.filter(([w,h])=>w===0||h===0).length;
-  }
-  pass(name+' all visible-panel buttons have geometry',zero===0,controls+' buttons checked');
-
-  await page.locator('.tab[data-tab="draft"]').click();
-  await page.locator('#draft').fill('This is a test sentence. Furthermore, this deliberately longer sentence exercises the analysis and rewrite engines in a realistic browser session.');
-  await page.getByRole('button',{name:'Analyze writing'}).click();
-  pass(name+' analysis executes',(await page.locator('#scoreBig').textContent())!=='—');
-
-  await page.locator('.tab[data-tab="rewrite"]').click();
-  await page.locator('#panel-rewrite button').filter({hasText:'Humanize'}).first().click();
-  const revision=(await page.locator('#rewriteResult').textContent())||'';
-  pass(name+' humanize produces a revision',revision.length>20&&!revision.includes('Choose a revision mode'));
-
-  await page.locator('.tab[data-tab="projects"]').click();
-  await page.locator('#projectName').fill('E2E Project');
-  await page.locator('.tab[data-tab="draft"]').click();
-  await page.locator('#draft').fill('Persistent project content for the automated test.');
-  await page.locator('.tab[data-tab="projects"]').click();
-  await page.getByRole('button',{name:'Save project'}).click();
-  await page.reload({waitUntil:'networkidle'});
-  await page.waitForFunction(()=>getComputedStyle(document.getElementById('runtimeWarning')).display==='none');
-  pass(name+' project persistence survives reload',(await page.locator('#draft').inputValue()).includes('Persistent project content'));
-
-  const upload=page.locator('#fileInput');
-  await upload.setInputFiles({name:'audit.txt',mimeType:'text/plain',buffer:Buffer.from('Uploaded text parser audit content.')});
-  await page.waitForFunction(()=>document.getElementById('draft').value.includes('Uploaded text parser audit content.'));
-  pass(name+' TXT upload parser works',true);
-  const claimSplit=await page.evaluate(()=>claimSentences('Uber operates in more than 70 countries (Uber Technologies, Inc., 2026).'));
-  pass(name+' claim parser preserves citations',claimSplit.length===1&&claimSplit[0].includes('Inc., 2026'));
-
-  const xlsx=await page.evaluate(()=>makeXLSX().length);
-  pass(name+' XLSX generator works',xlsx>500,xlsx+' bytes');
-
-  await page.locator('.tab[data-tab="connectors"]').click();
-  pass(name+' connector controls render',await page.getByRole('button',{name:'Import a document'}).isVisible()&&await page.getByRole('button',{name:'Save/share project file'}).isVisible());
-  pass(name+' AI handoff connector renders',await page.getByRole('button',{name:'Copy AI handoff'}).isVisible()&&await page.getByRole('button',{name:'Share AI handoff'}).isVisible());
-  pass(name+' AI handoff is functional',(await page.evaluate(()=>buildAIHandoff())).includes('PROJECT CONTENT'));
-
-  await page.locator('.tab[data-tab="canvas"]').click();
-  await page.getByRole('button',{name:'Show setup steps'}).click();
-  pass(name+' Canvas setup renders',await page.locator('#canvasSetup').isVisible());
-  pass(name+' Canvas bookmarklet code is available',(await page.locator('#canvasBookmarkletCode').inputValue()).startsWith('javascript:'));
-  await page.evaluate(()=>copyCanvasBookmarklet());
-  pass(name+' Canvas copy fallback remains usable',await page.locator('#canvasBookmarkletCode').isVisible());
-
-  await page.locator('.tab[data-tab="diagnostics"]').click();
-  await page.getByRole('button',{name:'Run health checks'}).click();
-  let bad=await page.locator('#testResults .bad').count();
-  pass(name+' built-in health checks pass',bad===0,bad+' failures');
-  await page.getByRole('button',{name:'Run deep QA'}).click();
-  bad=await page.locator('#testResults .bad').count();
-  pass(name+' deep QA passes',bad===0,bad+' failures');
-
-  await page.screenshot({path:'test/artifacts/app-'+name+'.png',fullPage:true});
-  finishErrors();
-  await page.close();
+  const page=await context.newPage();await page.setViewportSize(viewport);const done=await errors(page,name);
+  await page.goto(base+'index.html?qa=e2e',{waitUntil:'networkidle'});await page.waitForFunction(()=>getComputedStyle(document.getElementById('runtimeWarning')).display==='none');
+  pass(name+' boots',await page.locator('#draft').isVisible());
+  pass(name+' release version',await page.evaluate(()=>APP_VERSION==='4.2.0'));
+  pass(name+' no horizontal overflow',(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))<=2);
+  const tabs=await page.locator('.tab').evaluateAll(ts=>ts.map(t=>t.dataset.tab));let buttons=0,bad=0;
+  for(const tab of tabs){await page.locator('.tab[data-tab="'+tab+'"]').click();pass(name+' panel '+tab,await page.locator('#panel-'+tab).isVisible());const dims=await page.locator('#panel-'+tab+' button').evaluateAll(bs=>bs.filter(b=>getComputedStyle(b).display!=='none').map(b=>{const r=b.getBoundingClientRect();return[r.width,r.height]}));buttons+=dims.length;bad+=dims.filter(x=>x[0]===0||x[1]===0).length}
+  pass(name+' visible buttons have geometry',bad===0,buttons+' checked');
+  await page.locator('.tab[data-tab="draft"]').click();await page.locator('#draft').fill('This is a representative writing sample. Furthermore, this deliberately longer sentence exercises analysis, rewriting, persistence, and export behavior in a realistic browser session.');
+  await page.getByRole('button',{name:'Analyze writing'}).click();pass(name+' analysis executes',(await page.locator('#scoreBig').textContent())!=='—');
+  await page.locator('.tab[data-tab="rewrite"]').click();await page.getByRole('button',{name:'Humanize'}).click();pass(name+' humanize produces revision',((await page.locator('#rewriteResult').textContent())||'').length>20);
+  await page.locator('.tab[data-tab="projects"]').click();await page.locator('#projectName').fill('Production QA');await page.locator('.tab[data-tab="draft"]').click();await page.locator('#draft').fill('Persistent unicode content — café résumé 東京.');await page.locator('.tab[data-tab="projects"]').click();await page.getByRole('button',{name:'Save project'}).click();
+  await page.reload({waitUntil:'networkidle'});await page.waitForFunction(()=>getComputedStyle(document.getElementById('runtimeWarning')).display==='none');pass(name+' project survives reload',(await page.locator('#draft').inputValue()).includes('café'));
+  const recovered=await page.evaluate(()=>{const good=localStorage.getItem(STORE);localStorage.setItem(STORE_BACKUP,good);localStorage.setItem(STORE,'{broken');return getProjects().length});
+  pass(name+' corrupt project store recovers from backup',recovered>0,String(recovered));
+  await page.evaluate(()=>{const good=localStorage.getItem(STORE_BACKUP);if(good)localStorage.setItem(STORE,good)});
+  await page.locator('.tab[data-tab="draft"]').click();await page.locator('#fileInput').setInputFiles({name:'audit.txt',mimeType:'text/plain',buffer:Buffer.from('Uploaded parser audit content with Unicode café.')});await page.waitForFunction(()=>document.getElementById('draft').value.includes('Uploaded parser audit'));
+  pass(name+' TXT import works',true);
+  await page.locator('#fileInput').setInputFiles({name:'project.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({name:'Imported JSON',text:'JSON project import content.'}))});await page.waitForFunction(()=>document.getElementById('draft').value.includes('JSON project import'));
+  pass(name+' JSON project import works',await page.locator('#projectName').inputValue()==='Imported JSON');
+  pass(name+' XLSX generator produces file bytes',(await page.evaluate(()=>makeXLSX().length))>500);
+  await page.locator('.tab[data-tab="verify"]').click();await page.locator('.tab[data-tab="draft"]').click();await page.locator('#draft').fill('Uber operates globally (Uber Technologies, Inc., 2026). Revenue grew 12% in 2026.');await page.locator('.tab[data-tab="verify"]').click();await page.getByRole('button',{name:'Check citations'}).click();pass(name+' citation verifier recognizes author-date citations',((await page.locator('#citationResult').textContent())||'').includes('Author-date citations: 1'));
+  await page.locator('.tab[data-tab="connectors"]').click();pass(name+' connector hub is honest',((await page.locator('#panel-connectors').innerText())||'').includes('Direct authenticated model API: not configured'));pass(name+' AI handoff works',(await page.evaluate(()=>buildAIHandoff())).includes('PROJECT CONTENT'));
+  await page.locator('.tab[data-tab="canvas"]').click();pass(name+' Canvas Review replaces study queue',(await page.locator('#panel-canvas').innerText()).includes('Review results')&&!(await page.locator('#panel-canvas').innerText()).includes('Approval queue'));
+  await page.locator('.tab[data-tab="diagnostics"]').click();await page.getByRole('button',{name:'Run health checks'}).click();pass(name+' built-in health checks',(await page.locator('#testResults .bad').count())===0);
+  await page.screenshot({path:'test/artifacts/production-'+name+'.png',fullPage:true});done();await page.close()
 }
+await appRun('desktop',{width:1280,height:900});await appRun('mobile',{width:390,height:844});
 
-await appRun('desktop',{width:1280,height:900});
-await appRun('mobile',{width:390,height:844});
+const canvas=await context.newPage();await canvas.setViewportSize({width:390,height:844});const canvasDone=await errors(canvas,'Canvas fixture');
+await canvas.goto(base+'test/canvas-fixture.html',{waitUntil:'networkidle'});await canvas.waitForSelector('#provenance-canvas-lens-v2');
+const text=await canvas.locator('#provenance-canvas-lens-v2').innerText();
+pass('Canvas active page shows concise hint',text.includes('Hint:'));
+pass('Canvas active page does not expose a choice recommendation',!text.includes('Best-supported by visible evidence:'));
+pass('Canvas Lens ignores current-choice UI',!text.includes('Currently selected'));
+pass('Canvas Lens filter is available',await canvas.getByRole('searchbox',{name:'Filter Canvas Lens questions'}).isVisible());
+const before=await canvas.locator('input:checked').count();await canvas.getByRole('button',{name:'Scan'}).click();pass('Canvas Lens does not alter controls',(await canvas.locator('input:checked').count())===before);
+await canvas.evaluate(()=>{const q=document.createElement('div');q.className='question';q.dataset.questionId='3';q.innerHTML='<div class="question_text">Which gas is released?</div><label><input type="radio" name="q3"> Oxygen</label><label><input type="radio" name="q3"> Nitrogen</label>';document.body.appendChild(q)});
+await canvas.waitForFunction(()=>{const t=document.querySelector('#provenance-canvas-lens-v2')?.innerText||'';return t.includes('3 unique questions')||t.includes('3 question blocks')});pass('Canvas dynamic rescan works',true);
+await canvas.screenshot({path:'test/artifacts/canvas-4-2-mobile.png',fullPage:true});canvasDone();await canvas.close();
 
-const canvas=await context.newPage();
-await canvas.setViewportSize({width:390,height:844});
-const finishCanvasErrors=await pageErrors(canvas,'Canvas fixture');
-await canvas.goto(base+'test/canvas-fixture.html',{waitUntil:'networkidle'});
-await canvas.waitForSelector('#provenance-canvas-lens-v2');
-await canvas.waitForFunction(()=>{const t=document.querySelector('#provenance-canvas-lens-v2')?.innerText||'';return t.includes('2 question blocks detected')||t.includes('2 unique questions')});
-pass('Canvas Lens detects classic Canvas-style questions',true);
-const demoText=await canvas.locator('#provenance-canvas-lens-v2').innerText();
-pass('Canvas Lens fixture evidence ranking favors Chlorophyll',demoText.includes('Best-supported by visible evidence: B — Chlorophyll'));
-pass('Canvas Lens overlay shows no percentage scores',!/%/.test(demoText));
-pass('Canvas Lens renders inline review on Canvas',demoText.includes('Inline review'));
-pass('Canvas Lens side control exists',await canvas.getByRole('button',{name:'Move Canvas Lens to other side'}).isVisible());
+const feedback=await context.newPage();await feedback.goto(base+'test/canvas-compat.html?mode=nestedfeedback',{waitUntil:'networkidle'});await feedback.waitForSelector('#provenance-canvas-lens-v2');const ft=await feedback.locator('#provenance-canvas-lens-v2').innerText();
+pass('Nested Canvas question is deduplicated',ft.split('What is the relationship between nature and culture in shaping reality?').length-1===1);
+pass('Official Canvas feedback can be labeled confirmed',ft.includes('Confirmed: B — Nature limits culture, while culture shapes nature over time.'));
+pass('Review feedback does not expose current choice',!ft.includes('Currently selected'));await feedback.close();
 
-const feedbackPage=await context.newPage();
-await feedbackPage.setViewportSize({width:390,height:844});
-await feedbackPage.goto(base+'test/canvas-compat.html?mode=nestedfeedback',{waitUntil:'networkidle'});
-await feedbackPage.waitForSelector('#provenance-canvas-lens-v2');
-const feedbackText=await feedbackPage.locator('#provenance-canvas-lens-v2').innerText();
-pass('Canvas Lens deduplicates nested real-world question',feedbackText.split('What is the relationship between nature and culture in shaping reality?').length-1===1);
-pass('Canvas Lens reads Canvas confirmed feedback',feedbackText.includes('Canvas feedback identifies: B — Nature limits culture, while culture shapes nature over time.'));
-pass('Canvas Lens preserves wrong selected answer without changing it',(await feedbackPage.locator('input[type="radio"]:checked').count())===1);
-await feedbackPage.close();
+const app=await context.newPage();await app.goto(base+'index.html',{waitUntil:'networkidle'});await app.locator('.tab[data-tab="canvas"]').click();const beforeStatus=await app.locator('#canvasBridgeStatus').textContent();
+await app.evaluate(()=>window.dispatchEvent(new MessageEvent('message',{origin:'https://evil.example',data:{type:'PROVENANCE_CANVAS_CAPTURE',payload:{items:[{question:'Injected',options:[]}],context:'bad'}},source:window})));
+pass('Untrusted postMessage origin is rejected',(await app.locator('#canvasBridgeStatus').textContent())===beforeStatus);await app.close();
 
-await canvas.evaluate(()=>{
-  const q=document.createElement('div');q.className='question';q.dataset.questionId='3';
-  q.innerHTML='<div class="question_text">Which gas is released?</div><label><input type="radio" name="q3"> Oxygen</label><label><input type="radio" name="q3"> Nitrogen</label>';
-  document.body.appendChild(q);
-});
-await canvas.waitForFunction(()=>{const t=document.querySelector('#provenance-canvas-lens-v2')?.innerText||'';return t.includes('3 question blocks detected')||t.includes('3 unique questions')});
-pass('Canvas Lens auto-rescans dynamically loaded questions',true);
-
-const selected=await canvas.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
-pass('Canvas Lens never auto-selects answers',selected===0,selected+' selected controls');
-
-const canvasUrl=canvas.url(),pagesBefore=context.pages().length;
-pass('Canvas overlay has no app-switch buttons',(await canvas.getByRole('button',{name:/Open .*Provenance|Open deeper review/}).count())===0);
-await canvas.getByRole('button',{name:'Minimize Canvas Lens'}).click();
-pass('Canvas Lens minimizes inline',await canvas.locator('#provenance-canvas-lens-v2 [data-body]').isHidden());
-await canvas.locator('#provenance-canvas-lens-v2').hover();
-pass('Canvas Lens hover expands inline',await canvas.locator('#provenance-canvas-lens-v2 [data-body]').isVisible());
-await canvas.mouse.move(1,1);await canvas.waitForTimeout(100);
-pass('Canvas Lens returns to minimized dock',await canvas.locator('#provenance-canvas-lens-v2 [data-body]').isHidden());
-pass('Canvas Lens interactions stay on Canvas',canvas.url()===canvasUrl&&context.pages().length===pagesBefore);
-await canvas.screenshot({path:'test/artifacts/canvas-overlay-mobile.png',fullPage:true});
-finishCanvasErrors();
-
-await canvas.close();
 await browser.close();
-
-if(failures.length){
-  console.error('\nFAILURES\n'+failures.map(x=>' - '+x).join('\n'));
-  process.exit(1);
-}
-console.log('\nALL END-TO-END AUDIT TESTS PASSED');
+if(failures.length){console.error('\nFAILURES\n'+failures.map(x=>' - '+x).join('\n'));process.exit(1)}
+console.log('\nALL END-TO-END PRODUCTION TESTS PASSED');

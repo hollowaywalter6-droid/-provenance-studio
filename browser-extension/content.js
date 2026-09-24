@@ -105,12 +105,12 @@
     const choiceControls=[...el.querySelectorAll('input[type="radio"],input[type="checkbox"],[role="radio"],[role="checkbox"]')].filter(visible);
     choiceControls.forEach((input,i)=>{
       const text=labelText(input,el);
-      if(text&&!out.some(o=>o.text===text))out.push({label:String.fromCharCode(65+out.length),text,type:(input.getAttribute('role')||input.type||'choice'),selected:!!input.checked||input.getAttribute('aria-checked')==='true',feedback:choiceFeedback(input,el)});
+      if(text&&!out.some(o=>o.text===text))out.push({label:String.fromCharCode(65+out.length),text,type:(input.getAttribute('role')||input.type||'choice'),feedback:choiceFeedback(input,el)});
     });
     [...el.querySelectorAll('select')].filter(visible).forEach(sel=>{
       [...sel.options].filter(o=>!o.disabled&&norm(o.text)).forEach(o=>{
         const text=norm(o.text);
-        if(!out.some(x=>x.text===text))out.push({label:String.fromCharCode(65+out.length),text,type:'select',selected:!!o.selected,feedback:''});
+        if(!out.some(x=>x.text===text))out.push({label:String.fromCharCode(65+out.length),text,type:'select',feedback:''});
       });
     });
     return out;
@@ -168,18 +168,12 @@
     const ev=topEvidence(item.question,context);
     if(item.options.length){
       const confirmed=item.options.find(o=>o.feedback==='correct');
-      const rejected=item.options.filter(o=>o.feedback==='incorrect'&&o.selected);
-      if(confirmed){
-        return {headline:'Canvas feedback identifies: '+confirmed.label+' — '+confirmed.text,detail:'Canvas itself marks this choice as correct on the current page.',evidence:ev,source:'canvas-feedback'};
-      }
-      if(rejected.length){
-        return {headline:'Canvas feedback: '+rejected[0].label+' — '+rejected[0].text+' is marked incorrect.',detail:'The current page does not expose a confirmed correct choice to Lens, so Lens will not guess.',evidence:ev,source:'canvas-feedback'};
-      }
-      const ranked=item.options.map(o=>({...o,score:optionEvidenceScore(item,o,context)})).sort((x,y)=>y.score-x.score);
-      const best=ranked[0],second=ranked[1],clear=best&&best.score>=25&&(!second||best.score-second.score>=5);
-      return {headline:clear?'Best-supported by visible evidence: '+best.label+' — '+best.text:'No single choice is supported clearly enough by visible evidence.',detail:clear?'This is an evidence match, not a guaranteed answer. Review the evidence below.':'Lens will not guess when the page does not contain enough supporting evidence.',evidence:ev,source:'evidence'};
+      if(confirmed)return {headline:'Confirmed: '+confirmed.label+' — '+confirmed.text,detail:'Official Canvas review feedback.',evidence:[],source:'canvas-feedback'};
+      if(ev.length)return {headline:'Hint: '+ev[0].text.slice(0,260),detail:'',evidence:[],source:'evidence'};
+      return {headline:'Hint: focus on '+words(item.question).slice(0,6).join(', ')+'.',detail:'',evidence:[],source:'evidence'};
     }
-    return {headline:ev.length?'Response notes from this page':'No supporting context found on this page.',detail:ev.length?ev.map(x=>'• '+x.text).join('\n'):'No supporting page context was found. Add class notes or source material, then rescan.',evidence:ev,source:'evidence'};
+    if(ev.length)return {headline:'Key context: '+ev[0].text.slice(0,260),detail:'',evidence:[],source:'evidence'};
+    return {headline:'Key terms: '+words(item.question).slice(0,6).join(', ')+'.',detail:'',evidence:[],source:'evidence'};
   }
   function scan(){
     const pairs=uniqueQuestions(candidateRoots()),nodes=pairs.map(p=>p.el),items=pairs.map(p=>p.item);
@@ -195,7 +189,7 @@
   function compactPayload(capture,item){
     const p=capture.payload||{},items=(item?[item]:(p.items||[])).slice(0,20).map((q,i)=>({
       index:i+1,question:String(q.question||'').slice(0,900),
-      options:(q.options||[]).slice(0,12).map(o=>({label:String(o.label||'').slice(0,8),text:String(o.text||'').slice(0,500),selected:!!o.selected,feedback:String(o.feedback||'').slice(0,16)})),
+      options:(q.options||[]).slice(0,12).map(o=>({label:String(o.label||'').slice(0,8),text:String(o.text||'').slice(0,500),feedback:String(o.feedback||'').slice(0,16)})),
       openResponse:!!q.openResponse
     }));
     return {title:String(p.title||'Canvas page').slice(0,300),url:String(p.url||location.href).slice(0,1500),context:String(p.context||'').slice(0,8000),items,meta:{...(p.meta||{}),bridge:'mobile-same-tab'}};
@@ -241,7 +235,7 @@
   }
   function render(force=false){
     const capture=scan(),p=capture.payload;
-    const sig=JSON.stringify(p.items.map(x=>[x.question,x.options.map(o=>[o.text,!!o.selected])]))+'|'+lensNotes;
+    const sig=JSON.stringify(p.items.map(x=>[x.question,x.options.map(o=>[o.text,o.feedback])]))+'|'+lensNotes;
     if(!force&&sig===lastSignature)return;
     lastSignature=sig;body.innerHTML='';
     countEl.textContent=p.items.length?'• '+p.items.length:'';
@@ -249,6 +243,7 @@
     meta.textContent=p.items.length?p.items.length+' question block'+(p.items.length===1?'':'s')+' detected • Inline review • no app switching required':'No standard Canvas question blocks detected';
     if(p.meta.frame==='top'&&p.meta.iframeCount)meta.textContent+=' • '+p.meta.iframeCount+' frame'+(p.meta.iframeCount===1?'':'s');
     body.appendChild(meta);
+    const filter=document.createElement('input');filter.type='search';filter.placeholder='Filter questions…';filter.setAttribute('aria-label','Filter Canvas Lens questions');filter.style.cssText='box-sizing:border-box;width:100%;margin:0 0 8px;padding:8px 9px;border:1px solid #3a455e;border-radius:9px;background:#0a0f17;color:#fff;font-size:12px';body.appendChild(filter);
     const notesWrap=document.createElement('details');notesWrap.style.cssText='margin:0 0 8px;border:1px solid #263147;border-radius:10px;padding:7px;background:#0b1119';
     const notesSummary=document.createElement('summary');notesSummary.textContent='Review notes';notesSummary.style.cssText='cursor:pointer;color:#cbd5e1;font-size:12px;font-weight:700';
     const notes=document.createElement('textarea');notes.value=lensNotes;notes.placeholder='Optional class notes or source material…';notes.style.cssText='box-sizing:border-box;width:100%;min-height:72px;margin-top:7px;border:1px solid #3a455e;border-radius:9px;background:#0a0f17;color:#fff;padding:8px;font:12px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';
@@ -281,8 +276,9 @@
       const bar=document.createElement('div');bar.style.cssText='display:flex;gap:7px;margin-top:8px;flex-wrap:wrap';
       const reviewed=document.createElement('button');reviewed.type='button';reviewed.textContent='Mark reviewed';reviewed.style.cssText='border:1px solid #3a455e;border-radius:9px;background:#1d2637;color:#fff;padding:7px 9px;font-size:12px;font-weight:800;touch-action:manipulation';
       reviewed.onclick=()=>{box.style.borderColor='#4cbf9f';reviewed.textContent='Reviewed';reviewed.disabled=true};
-      bar.append(reviewed);box.appendChild(bar);body.appendChild(box);
+      bar.append(reviewed);box.appendChild(bar);box.dataset.lensQuestion=norm(item.question+' '+item.options.map(o=>o.text).join(' ')).toLowerCase();body.appendChild(box);
     });
+    filter.oninput=()=>{const term=norm(filter.value).toLowerCase();body.querySelectorAll('[data-lens-question]').forEach(card=>{card.style.display=!term||card.dataset.lensQuestion.includes(term)?'block':'none'})};
   }
   toggle.onclick=()=>setExpanded(collapsed);
   sideBtn.onclick=()=>{
