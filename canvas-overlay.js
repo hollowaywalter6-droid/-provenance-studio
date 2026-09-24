@@ -168,7 +168,7 @@
     const ev=topEvidence(item.question,context);
     if(item.options.length){
       const confirmed=item.options.find(o=>o.feedback==='correct');
-      const rejected=item.options.filter(o=>o.feedback==='incorrect');
+      const rejected=item.options.filter(o=>o.feedback==='incorrect'&&o.selected);
       if(confirmed){
         return {headline:'Canvas feedback identifies: '+confirmed.label+' — '+confirmed.text,detail:'Canvas itself marks this choice as correct on the current page.',evidence:ev,source:'canvas-feedback'};
       }
