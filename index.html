@@ -87,6 +87,26 @@ input[type="range"]{padding:0;background:transparent;border:0}
 @media(max-width:800px){.analysis-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:800px){.hero,.two{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.three{grid-template-columns:1fr}.big{font-size:1.7rem}}
 @media(max-width:480px){.app{padding:12px}.card{padding:14px;border-radius:18px}.brandrow{align-items:flex-start}.status{font-size:.72rem}.grid{grid-template-columns:1fr 1fr}}
+
+.update-banner{display:none;margin:10px 0 0;padding:10px 12px;border-radius:14px;background:#11271f;border:1px solid #2f7b68;color:#dffdf4}
+.update-banner.show{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.ocr-panel{display:none;margin-top:10px;padding:10px 12px;border-radius:14px;background:#0b1119;border:1px solid var(--line)}
+.ocr-panel.active{display:block}.ocr-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.76rem;color:var(--muted)}
+.ocr-panel progress{width:100%;height:8px;margin-top:8px;accent-color:#63e6be}
+.connector-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.connector-state{display:flex;gap:7px;align-items:center;font-size:.76rem;color:var(--muted)}
+.connector-dot{width:8px;height:8px;border-radius:50%;background:#748096}.connector-dot.good{background:var(--ok)}.connector-dot.warn{background:var(--warn)}
+.compact-result{max-height:52vh;overflow:auto}
+.sentence-map-tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+@media(max-width:700px){
+  .top{position:relative;padding:8px 0 10px;background:transparent;backdrop-filter:none}
+  .app{padding:10px}.brandrow{gap:8px}.brand{gap:9px}.logo{width:36px;height:36px;border-radius:12px}
+  h1{font-size:1.12rem}.sub{font-size:.74rem}.status{font-size:.68rem;padding:7px 9px}
+  .hero{display:block;margin:10px 0}.hero .orbwrap{display:none}.big{font-size:1.45rem;line-height:1.12}
+  .card{padding:14px;border-radius:18px}.result{min-height:72px}.tabs{position:sticky;top:0;z-index:15;background:#111620;padding:8px 0}
+  .connector-grid{grid-template-columns:1fr}.analysis-grid{grid-template-columns:repeat(2,1fr)}
+  #sentenceMap{max-height:54vh;overflow:auto}
+}
+
 </style>
 </head>
 <body>
@@ -97,6 +117,7 @@ input[type="range"]{padding:0;background:transparent;border:0}
       <div class="status"><span class="dot"></span> Works without Replit</div>
     </div>
     <div id="runtimeWarning" class="runtime-warning">Starting the app… If controls do not respond, open this page directly in Safari. A startup or browser error may be preventing the app from running.</div>
+    <div id="updateBanner" class="update-banner"><span id="updateText">A newer Provenance Studio build is available.</span><button class="secondary" onclick="updateNow()">Load latest version</button></div>
   </div>
 
   <section class="hero">
@@ -157,8 +178,16 @@ input[type="range"]{padding:0;background:transparent;border:0}
             <div class="small" style="margin-top:6px">Preview a photo on this device. Photos are not saved with text projects.</div>
             <input id="cameraInput" type="file" accept="image/*" capture="environment" onchange="handleImage(event)">
           </div>
-          <div id="uploadStatus" class="result" style="margin-top:14px;min-height:80px">No file selected.</div>
-          <div class="toolbar"><button id="retryPdfOcr" class="secondary" style="display:none" onclick="runPendingPdfOcr()">Run OCR on this PDF</button></div>
+          <div id="uploadStatus" class="result" style="margin-top:14px;min-height:72px">No file selected.</div>
+          <div class="toolbar">
+            <label class="small" style="display:flex;align-items:center;gap:7px">OCR mode
+              <select id="ocrMode" style="width:auto;padding:8px 10px"><option value="fast" selected>Fast mobile</option><option value="accurate">Accurate</option></select>
+            </label>
+            <button id="retryPdfOcr" class="secondary" style="display:none" onclick="runPendingPdfOcr()">Run PDF OCR</button>
+            <button id="ocrImageButton" class="secondary" style="display:none" onclick="runPendingImageOcr()">Extract image text</button>
+            <button id="cancelOcr" class="ghost" style="display:none" onclick="cancelOcr()">Cancel OCR</button>
+          </div>
+          <div id="ocrProgress" class="ocr-panel"><div class="ocr-head"><span id="ocrProgressText">Preparing OCR…</span><span id="ocrProgressPct"></span></div><progress id="ocrProgressBar" max="100" value="0"></progress></div>
           <img id="imagePreview" class="preview" alt="Uploaded image preview">
         </div>
       </div>
@@ -214,6 +243,7 @@ input[type="range"]{padding:0;background:transparent;border:0}
         </div>
         <div class="card" style="box-shadow:none">
           <div class="kicker">Sentence map</div>
+          <div class="sentence-map-tools"><button class="secondary" id="sentenceMapToggle" onclick="toggleSentenceMap()">Show all sentences</button></div>
           <div id="sentenceMap" class="list"></div>
         </div>
       </div>
@@ -225,13 +255,13 @@ input[type="range"]{padding:0;background:transparent;border:0}
           <div class="kicker">Citation verifier</div>
           <p class="small">Local mode checks citation structure, URLs, DOI patterns, and uncited factual claims. Live source validation is not available in this edition.</p>
           <button class="primary" onclick="verifyCitations()">Check citations</button>
-          <div id="citationResult" class="result" style="margin-top:12px"></div>
+          <div id="citationResult" class="result compact-result" style="margin-top:12px"></div>
         </div>
         <div>
           <div class="kicker">Hallucination / claim check</div>
           <p class="small">Flags statements that deserve evidence. This is a local risk screen, not a live fact check.</p>
           <button class="primary" onclick="checkClaims()">Check claims</button>
-          <div id="claimResult" class="result" style="margin-top:12px"></div>
+          <div id="claimResult" class="result compact-result" style="margin-top:12px"></div>
         </div>
       </div>
     </div>
@@ -305,27 +335,30 @@ input[type="range"]{padding:0;background:transparent;border:0}
     </div>
 
     <div class="panel" id="panel-connectors">
+      <div class="kicker">Connector Hub</div>
+      <p class="small">This standalone build never stores cloud credentials in the public site. Native file/share workflows are active; direct third-party AI APIs require a secure authenticated backend.</p>
+      <div id="connectorStatus" class="connector-grid" style="margin:12px 0"></div>
       <div class="two">
         <div class="item">
-          <strong>Files / Google Drive / OneDrive / Dropbox</strong>
-          <div class="small" style="margin:8px 0">On iPhone and iPad, the normal file picker can browse providers enabled in the Files app. No separate app login is required here.</div>
-          <div class="toolbar">
-            <button class="primary" onclick="openNativeFilePicker()">Import a document</button>
-            <button onclick="shareProjectFile()">Save/share project file</button>
-          </div>
+          <strong>Files / Drive / OneDrive / Dropbox</strong>
+          <div class="small" style="margin:8px 0">Uses the iPhone/iPad Files picker and share sheet, so installed file providers work without storing their passwords in Provenance.</div>
+          <div class="toolbar"><button class="primary" onclick="openNativeFilePicker()">Import a document</button><button onclick="shareProjectFile()">Save/share project file</button></div>
+        </div>
+        <div class="item">
+          <strong>AI handoff — ChatGPT / Claude / Copilot</strong>
+          <div class="small" style="margin:8px 0">Creates a clean handoff package from the current project. You choose which installed app/service receives it. This is a real copy/share workflow, not a fake API connection.</div>
+          <div class="toolbar"><button class="primary" onclick="copyAIHandoff()">Copy AI handoff</button><button onclick="shareAIHandoff()">Share AI handoff</button><button onclick="downloadAIHandoff()">Download handoff</button></div>
+          <div class="small">Direct authenticated model API: not configured in this public client.</div>
         </div>
         <div class="item">
           <strong>Excel</strong>
-          <div class="small" style="margin:8px 0">Create a real XLSX workbook locally, then open or save it with Excel, OneDrive, Drive, or Files.</div>
+          <div class="small" style="margin:8px 0">Creates a real XLSX workbook locally for Excel, OneDrive, Drive, or Files.</div>
           <div class="toolbar"><button onclick="downloadXLSX()">Create XLSX</button></div>
         </div>
         <div class="item">
-          <strong>Claude / ChatGPT / Copilot</strong>
-          <div class="small">Not connected in this edition. These cards do not provide AI access. The tools here use local rules, not Claude, ChatGPT, or Copilot.</div>
-        </div>
-        <div class="item">
-          <strong>Replit Developer</strong>
-          <div class="small">Not connected in this edition. No automatic development or deployment is performed.</div>
+          <strong>Developer / GitHub workflow</strong>
+          <div class="small" style="margin:8px 0">Production is deployed from GitHub Pages with browser, WebKit, Canvas, stress, and regression gates. Replit is not required.</div>
+          <div class="toolbar"><button onclick="refreshConnectorStatus()">Refresh connector status</button></div>
         </div>
       </div>
     </div>
@@ -335,14 +368,17 @@ input[type="range"]{padding:0;background:transparent;border:0}
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v3.2.0 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v4.0.0 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
+const APP_VERSION='4.0.0';
 const STORE='provenance-standalone-projects-v1';
 const CURRENT='provenance-standalone-current-v1';
 let rewriteBuffer='';
 let currentProjectId=null;
+let sentenceMapExpanded=false,lastSentenceSet=[];
+let pendingImageFile=null,ocrCancelled=false,ocrWorkerPromise=null,ocrWorker=null,ocrLogger=null,ocrCleanupTimer=null;
 const memoryStorage=new Map();
 function notice(message){$('appStatus').textContent=message}
 function readStored(key){try{return localStorage.getItem(key)}catch(e){return memoryStorage.get(key)||null}}
@@ -356,6 +392,7 @@ function showTab(name){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===name));
   document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
   $('panel-'+name).classList.add('active');
+  if(name==='connectors')refreshConnectorStatus();
 }
 function words(t){return (t.trim().match(/\b[\w’'-]+\b/g)||[])}
 function sents(t){
@@ -523,69 +560,122 @@ async function loadTesseract(){
   }).catch(err=>{tesseractPromise=null;throw new Error('OCR engine could not load: '+((err&&err.message)||err))});
   return tesseractPromise;
 }
-async function ocrPdf(arrayBuffer,onProgress){
-  const [pdfjs,tess]=await Promise.all([loadPdfJs(),loadTesseract()]);
-  const data=arrayBuffer instanceof Uint8Array?arrayBuffer:new Uint8Array(arrayBuffer);
-  const doc=await pdfjs.getDocument({data:data.slice(),isEvalSupported:false}).promise;
-  const worker=await tess.createWorker('eng',undefined,{logger:m=>{
-    if(onProgress&&m&&m.status==='recognizing text'&&Number.isFinite(m.progress))onProgress('OCR recognizing text • '+Math.round(m.progress*100)+'%');
-  }});
-  const pages=[];
+function getOcrMode(){return $('ocrMode')&&$('ocrMode').value==='accurate'?'accurate':'fast'}
+function setOcrProgress(message,pct,active=true){
+  const panel=$('ocrProgress'),bar=$('ocrProgressBar'),txt=$('ocrProgressText'),pc=$('ocrProgressPct'),cancel=$('cancelOcr');
+  if(!panel)return;
+  panel.classList.toggle('active',!!active);if(cancel)cancel.style.display=active?'inline-flex':'none';
+  if(txt)txt.textContent=message||'OCR';if(Number.isFinite(pct)){bar.value=Math.max(0,Math.min(100,pct));pc.textContent=Math.round(pct)+'%'}else{bar.removeAttribute('value');pc.textContent=''}
+}
+async function getOcrWorker(){
+  clearTimeout(ocrCleanupTimer);
+  if(ocrWorkerPromise)return ocrWorkerPromise;
+  ocrWorkerPromise=loadTesseract().then(api=>api.createWorker('eng',undefined,{logger:m=>{
+    if(ocrLogger&&m&&m.status==='recognizing text'&&Number.isFinite(m.progress))ocrLogger(m.progress)
+  }})).then(async worker=>{
+    ocrWorker=worker;
+    try{await worker.setParameters({preserve_interword_spaces:'1',user_defined_dpi:'150'})}catch(_){}
+    return worker
+  }).catch(err=>{ocrWorkerPromise=null;ocrWorker=null;throw err});
+  return ocrWorkerPromise
+}
+function scheduleOcrWorkerCleanup(){
+  clearTimeout(ocrCleanupTimer);ocrCleanupTimer=setTimeout(async()=>{const w=ocrWorker;ocrWorker=null;ocrWorkerPromise=null;if(w)try{await w.terminate()}catch(_){}},45000)
+}
+async function cancelOcr(){
+  ocrCancelled=true;const w=ocrWorker;ocrWorker=null;ocrWorkerPromise=null;clearTimeout(ocrCleanupTimer);
+  if(w)try{await w.terminate()}catch(_){}
+  setOcrProgress('OCR cancelled.',0,false);$('uploadStatus').textContent='OCR cancelled. Your file is still available; choose Fast or Accurate and try again.'
+}
+function ocrScale(width,height,mode){
+  const max=Math.max(width,height)||1,target=mode==='accurate'?1900:1100,cap=mode==='accurate'?1.9:1.2;
+  return Math.max(.45,Math.min(cap,target/max))
+}
+async function recognizeCanvas(canvas,label,mode){
+  if(ocrCancelled)throw new Error('OCR cancelled.');
+  const worker=await getOcrWorker();
+  ocrLogger=p=>setOcrProgress(label,Math.round(p*100),true);
+  const result=await worker.recognize(canvas);
+  ocrLogger=null;scheduleOcrWorkerCleanup();
+  return String(result&&result.data&&result.data.text||'').trim()
+}
+async function imageFileCanvas(file,mode){
+  let source=null,url='';
+  try{
+    if('createImageBitmap' in window)source=await createImageBitmap(file);
+  }catch(_){}
+  if(!source){
+    url=URL.createObjectURL(file);source=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(new Error('The image could not be decoded.'));im.src=url})
+  }
+  const w=source.width||source.naturalWidth,h=source.height||source.naturalHeight,scale=ocrScale(w,h,mode);
+  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale));
+  const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.filter=mode==='accurate'?'grayscale(1) contrast(1.22)':'grayscale(1) contrast(1.12)';
+  ctx.drawImage(source,0,0,canvas.width,canvas.height);ctx.filter='none';
+  try{source.close&&source.close()}catch(_){}if(url)URL.revokeObjectURL(url);
+  return canvas
+}
+async function ocrImageFile(file,mode,onProgress){
+  ocrCancelled=false;const canvas=await imageFileCanvas(file,mode);
+  if(onProgress)onProgress('Preparing image OCR…',5);
+  try{
+    const text=await recognizeCanvas(canvas,'Recognizing image text…',mode);
+    if(text.length<3)throw new Error('OCR did not recognize readable text.');
+    return text
+  }finally{canvas.width=1;canvas.height=1}
+}
+async function ocrPdf(arrayBuffer,onProgress,mode=getOcrMode()){
+  const pdfjs=await loadPdfJs(),data=arrayBuffer instanceof Uint8Array?arrayBuffer:new Uint8Array(arrayBuffer);
+  const doc=await pdfjs.getDocument({data:data.slice(),isEvalSupported:false}).promise,pages=[];ocrCancelled=false;
   try{
     for(let i=1;i<=doc.numPages;i++){
-      if(onProgress)onProgress('OCR • rendering page '+i+' of '+doc.numPages+'…');
-      const page=await doc.getPage(i);
-      const base=page.getViewport({scale:1});
-      const maxDim=1900;
-      const scale=Math.max(1,Math.min(2,maxDim/Math.max(base.width,base.height)));
-      const viewport=page.getViewport({scale});
-      const canvas=document.createElement('canvas');
-      canvas.width=Math.max(1,Math.round(viewport.width));
-      canvas.height=Math.max(1,Math.round(viewport.height));
-      const ctx=canvas.getContext('2d',{alpha:false});
-      ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+      if(ocrCancelled)throw new Error('OCR cancelled.');
+      const page=await doc.getPage(i),base=page.getViewport({scale:1}),scale=ocrScale(base.width,base.height,mode),viewport=page.getViewport({scale});
+      const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(viewport.width));canvas.height=Math.max(1,Math.round(viewport.height));
+      const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+      if(onProgress)onProgress('Rendering page '+i+' of '+doc.numPages+'…',Math.round(((i-1)/doc.numPages)*100));
       await page.render({canvasContext:ctx,viewport}).promise;
-      if(onProgress)onProgress('OCR • recognizing page '+i+' of '+doc.numPages+'…');
-      const result=await worker.recognize(canvas);
-      const txt=String(result&&result.data&&result.data.text||'').trim();
-      if(txt)pages.push(txt);
-      canvas.width=1;canvas.height=1;
-      try{page.cleanup()}catch(_){}
+      const txt=await recognizeCanvas(canvas,'OCR page '+i+' of '+doc.numPages+'…',mode);if(txt)pages.push(txt);
+      canvas.width=1;canvas.height=1;try{page.cleanup()}catch(_){}
     }
-  }finally{
-    try{await worker.terminate()}catch(_){}
-    try{doc.cleanup();doc.destroy()}catch(_){}
-  }
+  }finally{try{doc.cleanup();doc.destroy()}catch(_){}}
   const text=pages.join('\n\n').replace(/\n{3,}/g,'\n\n').trim();
   if(text.length<8)throw new Error('OCR completed but could not recognize readable text.');
-  return text;
+  if(onProgress)onProgress('OCR complete.',100);
+  return text
 }
 async function extractPdfSmart(arrayBuffer,file,onProgress){
   try{return await extractPdf(arrayBuffer)}catch(_){}
-  if(onProgress)onProgress('Basic PDF parser found no usable text. Trying advanced PDF decoding…');
-  try{return await extractPdfWithPdfJs(arrayBuffer,onProgress)}catch(pdfErr){
-    if(!navigator.onLine)throw new Error('This PDF needs advanced decoding or OCR. Connect to the internet once so the browser can load the PDF/OCR engine.');
-    if(file&&file.size>12*1024*1024){
-      pendingPdfFile=file;
-      throw new Error('This appears to be a scanned/image PDF. It is larger than 12 MB, so automatic OCR was paused to protect mobile memory. Tap “Run OCR on this PDF” to continue.');
+  if(onProgress)onProgress('Trying advanced PDF text decoding…',8);
+  try{return await extractPdfWithPdfJs(arrayBuffer,msg=>onProgress&&onProgress(msg,12))}catch(pdfErr){
+    if(!navigator.onLine)throw new Error('This PDF needs advanced decoding or OCR. Connect once so the browser can load the OCR engine.');
+    if(file&&file.size>20*1024*1024){
+      pendingPdfFile=file;throw new Error('This scanned/image PDF is over 20 MB. Automatic OCR was paused to protect mobile memory. Tap “Run PDF OCR” when ready.')
     }
-    if(onProgress)onProgress('No embedded text found. Starting OCR automatically…');
-    return await ocrPdf(arrayBuffer,onProgress);
+    if(onProgress)onProgress('No embedded text found. Starting '+getOcrMode()+' OCR…',15);
+    return await ocrPdf(arrayBuffer,onProgress,getOcrMode())
   }
 }
 async function runPendingPdfOcr(){
   const f=pendingPdfFile;if(!f){notice('Choose a PDF first.');return}
   const btn=$('retryPdfOcr');btn.disabled=true;
   try{
-    const text=await ocrPdf(await f.arrayBuffer(),msg=>$('uploadStatus').textContent=msg);
-    $('draft').value=text;
-    $('projectName').value=$('projectName').value||f.name.replace(/\.[^.]+$/,'');
+    const text=await ocrPdf(await f.arrayBuffer(),setOcrProgress,getOcrMode());
+    $('draft').value=text;$('projectName').value=$('projectName').value||f.name.replace(/\.[^.]+$/,'');
     $('uploadStatus').textContent='Loaded '+f.name+' with OCR • '+words(text).length+' words extracted.';
-    pendingPdfFile=null;btn.style.display='none';onDraftChange();
-  }catch(err){
-    $('uploadStatus').textContent='OCR could not finish: '+((err&&err.message)||err);
-    btn.style.display='inline-flex';
-  }finally{btn.disabled=false}
+    pendingPdfFile=null;btn.style.display='none';onDraftChange();setOcrProgress('OCR complete.',100,false)
+  }catch(err){$('uploadStatus').textContent='OCR could not finish: '+((err&&err.message)||err);btn.style.display='inline-flex';setOcrProgress('OCR stopped.',0,false)}
+  finally{btn.disabled=false}
+}
+async function runPendingImageOcr(){
+  const f=pendingImageFile;if(!f){notice('Choose a screenshot or photo first.');return}
+  try{
+    setOcrProgress('Preparing image OCR…',2,true);
+    const text=await ocrImageFile(f,getOcrMode(),setOcrProgress);
+    $('draft').value=text;$('projectName').value=$('projectName').value||f.name.replace(/\.[^.]+$/,'');
+    $('uploadStatus').textContent='Extracted text from '+f.name+' • '+words(text).length+' words.';
+    onDraftChange();setOcrProgress('Image OCR complete.',100,false)
+  }catch(err){$('uploadStatus').textContent='Image OCR could not finish: '+((err&&err.message)||err);setOcrProgress('OCR stopped.',0,false)}
 }
 async function handleFile(e){
   const f=e.target.files&&e.target.files[0]; if(!f)return;
@@ -602,7 +692,7 @@ async function handleFile(e){
     }else if(ext==='pdf'){
       pendingPdfFile=f;
       $('retryPdfOcr').style.display='none';
-      text=await extractPdfSmart(await f.arrayBuffer(),f,msg=>$('uploadStatus').textContent=msg);
+      text=await extractPdfSmart(await f.arrayBuffer(),f,setOcrProgress);
       pendingPdfFile=null;
     }else if(f.type.startsWith('image/')||['jpg','jpeg','png','webp','heic','heif'].includes(ext)){
       await handleImage({target:{files:[f]}});
@@ -613,7 +703,7 @@ async function handleFile(e){
     $('draft').value=String(text||'');
     $('projectName').value=$('projectName').value||f.name.replace(/\.[^.]+$/,'');
     $('uploadStatus').textContent='Loaded '+f.name+' successfully • '+words(text).length+' words extracted.';
-    $('retryPdfOcr').style.display='none';
+    $('retryPdfOcr').style.display='none';setOcrProgress('',0,false);
     onDraftChange();
   }catch(err){
     const msg=(err&&err.message)||String(err);
@@ -624,13 +714,19 @@ async function handleFile(e){
   }
 }
 async function handleImage(e){
-  const f=e.target.files&&e.target.files[0]; if(!f)return;
-  const img=$('imagePreview');
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  pendingImageFile=f;const img=$('imagePreview'),ocrBtn=$('ocrImageButton');if(ocrBtn)ocrBtn.style.display='inline-flex';
   try{
-    img.src=URL.createObjectURL(f);img.style.display='block';
-    img.onload=()=>{setTimeout(()=>URL.revokeObjectURL(img.src),5000)};
+    const old=img.dataset.url;if(old)URL.revokeObjectURL(old);
+    const url=URL.createObjectURL(f);img.dataset.url=url;img.src=url;img.style.display='block'
   }catch(_){}
-  $('uploadStatus').textContent='Photo preview only (not saved in projects): '+f.name+' ('+Math.round(f.size/1024)+' KB). Image upload/preview works locally. OCR is optional because browsers do not provide a reliable built-in text-recognition API.';
+  $('uploadStatus').textContent='Image ready: '+f.name+' ('+Math.round(f.size/1024)+' KB). Fast OCR is starting…';
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  if(['png','jpg','jpeg','webp'].includes(ext)||/^image\/(png|jpeg|webp)$/i.test(f.type)){
+    await runPendingImageOcr()
+  }else{
+    $('uploadStatus').textContent='Image preview loaded. Tap “Extract image text” to try OCR for this format.'
+  }
 }
 
 function analyze(){
@@ -663,10 +759,16 @@ function analyze(){
   if(repeatedOpeners)details.push('Repeated sentence openings: '+repeatedOpeners+'.');
   if(!foundMarkers.length&&!repeatedOpeners)details.push('No strong formulaic phrase pattern was found by the local rules.');
   $('analysisDetail').textContent=details.join('\n');
-  $('sentenceMap').innerHTML='';
-  ss.forEach(function(s,i){const d=document.createElement('div');d.className='item';d.innerHTML='<strong>Sentence '+(i+1)+'</strong><div class="small">'+words(s).length+' words</div><div>'+esc(s)+'</div>';$('sentenceMap').append(d)});
+  lastSentenceSet=ss;sentenceMapExpanded=false;renderSentenceMap();
   showTab('analysis')
 }
+function renderSentenceMap(){
+  const map=$('sentenceMap'),btn=$('sentenceMapToggle');if(!map)return;map.innerHTML='';
+  const limit=sentenceMapExpanded?lastSentenceSet.length:Math.min(10,lastSentenceSet.length);
+  lastSentenceSet.slice(0,limit).forEach(function(s,i){const d=document.createElement('div');d.className='item';d.innerHTML='<strong>Sentence '+(i+1)+'</strong><div class="small">'+words(s).length+' words</div><div>'+esc(s)+'</div>';map.append(d)});
+  if(btn){btn.style.display=lastSentenceSet.length>10?'inline-flex':'none';btn.textContent=sentenceMapExpanded?'Show first 10':'Show all '+lastSentenceSet.length+' sentences'}
+}
+function toggleSentenceMap(){sentenceMapExpanded=!sentenceMapExpanded;renderSentenceMap()}
 
 function cleanupCommon(t){
   return String(t||'')
@@ -770,8 +872,17 @@ function verifyCitations(){
   if(numeric.length&&!urls.length&&!doi.length&&!bracket.length)out+='\n\n⚠ Several factual claims appear to have no nearby citation structure.';
   $('citationResult').textContent=out
 }
+function claimSentences(text){
+  const kept=[];
+  let t=String(text||'').replace(/\([^()\n]{0,220}\b(?:19|20)\d{2}[a-z]?[^()\n]{0,120}\)/gi,m=>{kept.push(m);return ' PVCITE'+(kept.length-1)+'TOKEN '});
+  const abbr=[];
+  t=t.replace(/\b(?:Inc|Corp|Co|Ltd|LLC|Dr|Mr|Ms|Prof|Sr|Jr|U\.S|e\.g|i\.e)\./gi,m=>{abbr.push(m);return ' PVABBR'+(abbr.length-1)+'TOKEN '});
+  return sents(t).map(s=>s.replace(/PVCITE(\d+)TOKEN/g,(_,i)=>kept[+i]).replace(/PVABBR(\d+)TOKEN/g,(_,i)=>abbr[+i]).replace(/\s+/g,' ').trim()).filter(Boolean)
+}
 function checkClaims(){
-  const risky=sents($('draft').value).filter(x=>/\b(always|never|proves|causes|guarantees|all|none|most|studies show|research shows|\d+%|\$\d+|\b20\d{2}\b)\b/i.test(x));
+  const trigger=/\b(always|never|proves|causes|guarantees|all|none|most|studies show|research shows|more than|around|approximately|average|valued|grew|operates|serves|\d+(?:\.\d+)?%|\$\d+|\b(?:19|20)\d{2}\b)\b/i;
+  const verb=/\b(is|are|was|were|has|have|had|grew|operates|serves|became|came|made|affected|affects|shapes|limits|increased|decreased|reported|found|showed|demonstrated|valued)\b/i;
+  const risky=claimSentences($('draft').value).filter(s=>words(s).length>=7&&trigger.test(s)&&verb.test(s)&&!/^(references|works cited|bibliography)\b/i.test(s));
   $('claimResult').textContent=risky.length?'Claims worth checking against sources:\n\n'+risky.map((x,i)=>(i+1)+'. '+x).join('\n\n'):'No obvious high-risk unsupported claims found by the local screen.'
 }
 function filterTerms(){return $('wordFilter').value.split(',').map(x=>x.trim()).filter(Boolean)}
@@ -787,7 +898,7 @@ function removeFiltered(){
 const CANVAS_LENS_URL='https://hollowaywalter6-droid.github.io/-provenance-studio/';
 function canvasBookmarklet(){
   const app='https://hollowaywalter6-droid.github.io/-provenance-studio/';
-  const code=`(()=>{const A='${app}',n=s=>String(s||'').replace(/\\s+/g,' ').trim(),V=e=>{if(!e)return false;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'},L=(x,root)=>{const a=x.getAttribute&&x.getAttribute('aria-label');if(a)return n(a);const by=x.getAttribute&&x.getAttribute('aria-labelledby');if(by){const t=by.split(/\\s+/).map(id=>document.getElementById(id)).filter(Boolean).map(z=>z.innerText||z.textContent).join(' ');if(n(t))return n(t)}if(x.id){try{const l=document.querySelector('label[for="'+CSS.escape(x.id)+'"]');if(l&&n(l.innerText))return n(l.innerText)}catch(e){}}const lab=x.closest&&x.closest('label');if(lab&&n(lab.innerText))return n(lab.innerText);const sels=['[data-testid*="answer"]','[data-testid*="choice"]','[class*="answer"]','[class*="choice"]','[class*="label"]'];for(const s of sels){const z=x.closest&&x.closest(s);if(z&&z!==root){const t=n(z.innerText);if(t&&t!==n(root.innerText)&&t.length<1200)return t}}let z=x.parentElement,b='';for(let k=0;z&&z!==root&&k<4;k++,z=z.parentElement){const t=n(z.innerText);if(t&&t!==n(root.innerText)&&t.length<1200&&(!b||t.length<b.length))b=t}return b||n(x.innerText)},R=[...document.querySelectorAll('.question,.quiz_question,[data-question-id],.question_holder')].filter(V),F=R.length?R:[...document.querySelectorAll('fieldset,[role="group"][aria-labelledby],[data-testid*="question-container"],[data-testid*="question-item"],[data-testid^="question-"]')].filter(e=>V(e)&&e.querySelector('input,textarea,select,[role="radio"],[role="checkbox"],[contenteditable="true"]')),P=[...new Set(F)].slice(0,20).map((e,i)=>{let q='';for(const s of ['.question_text','.question_name','legend','[data-testid*="question-text"]','[data-testid*="prompt"]','h1','h2','h3','h4']){const z=e.querySelector(s);if(z&&n(z.innerText).length>3){q=n(z.innerText);break}}if(!q)q=n(e.innerText).slice(0,900);const o=[...e.querySelectorAll('input[type="radio"],input[type="checkbox"],[role="radio"],[role="checkbox"]')].filter(V).slice(0,12).map((x,j)=>({label:String.fromCharCode(65+j),text:L(x,e).slice(0,500)})).filter(x=>x.text);return{index:i+1,question:(q||('Question '+(i+1))).slice(0,900),options:o,openResponse:!!e.querySelector('textarea,input[type="text"],input[type="number"],select,[contenteditable="true"]')}});let C=n(document.body.innerText);F.forEach(e=>{const t=n(e.innerText);if(t)C=C.replace(t,' ')});C=n(C).slice(0,8000);const p={title:document.title.slice(0,300),url:location.href.slice(0,1500),context:C,items:P.length?P:[{index:1,question:n(document.body.innerText).slice(0,4000),options:[],openResponse:true}],meta:{frame:top===self?'top':'embedded',capturedAt:new Date().toISOString(),bridge:'iphone-bookmarklet'}};const I='provenance-iphone-lens',T=s=>(n(s).toLowerCase().match(/[a-z0-9']+/g)||[]).filter(x=>x.length>2&&!['the','and','for','with','that','this','what','which','are','was','were','from','into','does','not'].includes(x)),O=(a,b)=>{const X=new Set(T(a)),Y=new Set(T(b));if(!X.size||!Y.size)return 0;let h=0;X.forEach(x=>{if(Y.has(x))h++});return h/Math.max(1,Math.min(X.size,Y.size))},S=C.split(/(?<=[.!?])\\s+/).filter(Boolean),G=it=>{if(!it.options.length)return null;const r=it.options.map(o=>{let s=0,e='';S.forEach(x=>{const v=O(o.text,x)*.65+O(it.question,x)*.35;if(v>s){s=v;e=x}});return{...o,s,e}}).sort((a,b)=>b.s-a.s),b=r[0],d=r[1];return b&&b.s>=.25&&(!d||b.s-d.s>=.08)?b:null};let root=document.getElementById(I);if(root)root.remove();root=document.createElement('div');root.id=I;root.setAttribute('data-provenance-lens','true');root.style.cssText='position:fixed;right:10px;bottom:10px;width:min(390px,calc(100vw - 20px));max-height:72vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.5);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto';const head=document.createElement('div');head.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#171d2a;border-bottom:1px solid #2a3244';const title=document.createElement('strong');title.textContent='Canvas Lens';const ctr=document.createElement('div'),min=document.createElement('button'),close=document.createElement('button');min.textContent='−';close.textContent='×';[min,close].forEach(b=>b.style.cssText='margin-left:5px;border:1px solid #3a455e;border-radius:9px;background:#222b3e;color:#fff;padding:6px 8px;font-weight:700');ctr.append(min,close);head.append(title,ctr);const B=document.createElement('div');B.style.cssText='padding:10px;overflow:auto;max-height:calc(72vh - 48px)';const meta=document.createElement('div');meta.style.cssText='font-size:11px;color:#aeb8cb;margin-bottom:8px';meta.textContent='Inline review • '+p.items.length+' question'+(p.items.length===1?'':'s')+' • tap bookmark again to rescan';B.appendChild(meta);p.items.forEach((it,i)=>{const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:14px;padding:10px;margin:8px 0;background:#0c1119';const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35';q.textContent=(i+1)+'. '+it.question.slice(0,500);const a=document.createElement('div');a.style.cssText='margin-top:8px;padding:9px;border-radius:10px;background:#141c29';const tag=document.createElement('div');tag.style.cssText='font-size:11px;color:#63e6be;font-weight:800;text-transform:uppercase';tag.textContent='Lens review';const ans=document.createElement('div');ans.style.cssText='margin-top:5px;font-weight:800';const best=G(it);ans.textContent=best?'Best-supported choice: '+best.label+' — '+best.text:(it.options.length?'No single choice is supported clearly enough by visible page context.':'Open-response item detected.');a.append(tag,ans);if(best&&best.e){const det=document.createElement('details'),sum=document.createElement('summary'),ev=document.createElement('div');sum.textContent='Evidence';ev.style.cssText='margin-top:6px;color:#aeb8cb;font-size:12px';ev.textContent=best.e;det.append(sum,ev);a.appendChild(det)}box.append(q,a);B.appendChild(box)});if(!p.items.length){const z=document.createElement('div');z.textContent='No question detected. Scroll to a visible question and tap the bookmark again.';B.appendChild(z)}root.append(head,B);document.documentElement.appendChild(root);let col=false;min.onclick=()=>{col=!col;B.style.display=col?'none':'block';root.style.width=col?'145px':'min(390px,calc(100vw - 20px))';min.textContent=col?'+':'−'};close.onclick=()=>root.remove();root.addEventListener('click',e=>e.stopPropagation());root.addEventListener('pointerdown',e=>e.stopPropagation());root.addEventListener('mouseenter',()=>{if(col){B.style.display='block';root.style.width='min(390px,calc(100vw - 20px))'}});root.addEventListener('mouseleave',()=>{if(col){B.style.display='none';root.style.width='145px'}})})()`;
+  const code=`(()=>{const A='${app}',n=s=>String(s||'').replace(/\\s+/g,' ').trim(),V=e=>{if(!e)return false;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'},L=(x,root)=>{const a=x.getAttribute&&x.getAttribute('aria-label');if(a)return n(a);const by=x.getAttribute&&x.getAttribute('aria-labelledby');if(by){const t=by.split(/\\s+/).map(id=>document.getElementById(id)).filter(Boolean).map(z=>z.innerText||z.textContent).join(' ');if(n(t))return n(t)}if(x.id){try{const l=document.querySelector('label[for="'+CSS.escape(x.id)+'"]');if(l&&n(l.innerText))return n(l.innerText)}catch(e){}}const lab=x.closest&&x.closest('label');if(lab&&n(lab.innerText))return n(lab.innerText);const sels=['[data-testid*="answer"]','[data-testid*="choice"]','[class*="answer"]','[class*="choice"]','[class*="label"]'];for(const s of sels){const z=x.closest&&x.closest(s);if(z&&z!==root){const t=n(z.innerText);if(t&&t!==n(root.innerText)&&t.length<1200)return t}}let z=x.parentElement,b='';for(let k=0;z&&z!==root&&k<4;k++,z=z.parentElement){const t=n(z.innerText);if(t&&t!==n(root.innerText)&&t.length<1200&&(!b||t.length<b.length))b=t}return b||n(x.innerText)},R=[...document.querySelectorAll('.question,.quiz_question,[data-question-id],.question_holder')].filter(V),F=R.length?R:[...document.querySelectorAll('fieldset,[role="group"][aria-labelledby],[data-testid*="question-container"],[data-testid*="question-item"],[data-testid^="question-"]')].filter(e=>V(e)&&e.querySelector('input,textarea,select,[role="radio"],[role="checkbox"],[contenteditable="true"]')),P=[...new Set(F)].slice(0,20).map((e,i)=>{let q='';for(const s of ['.question_text','.question_name','legend','[data-testid*="question-text"]','[data-testid*="prompt"]','h1','h2','h3','h4']){const z=e.querySelector(s);if(z&&n(z.innerText).length>3){q=n(z.innerText);break}}if(!q)q=n(e.innerText).slice(0,900);const o=[...e.querySelectorAll('input[type="radio"],input[type="checkbox"],[role="radio"],[role="checkbox"]')].filter(V).slice(0,12).map((x,j)=>({label:String.fromCharCode(65+j),text:L(x,e).slice(0,500),selected:!!x.checked||x.getAttribute('aria-checked')==='true'})).filter(x=>x.text);return{index:i+1,question:(q||('Question '+(i+1))).slice(0,900),options:o,openResponse:!!e.querySelector('textarea,input[type="text"],input[type="number"],select,[contenteditable="true"]')}});let C=n(document.body.innerText);F.forEach(e=>{const t=n(e.innerText);if(t)C=C.replace(t,' ')});C=n(C).slice(0,8000);const p={title:document.title.slice(0,300),url:location.href.slice(0,1500),context:C,items:P.length?P:[{index:1,question:n(document.body.innerText).slice(0,4000),options:[],openResponse:true}],meta:{frame:top===self?'top':'embedded',capturedAt:new Date().toISOString(),bridge:'iphone-bookmarklet'}};const I='provenance-iphone-lens',T=s=>(n(s).toLowerCase().match(/[a-z0-9']+/g)||[]).filter(x=>x.length>2&&!['the','and','for','with','that','this','what','which','are','was','were','from','into','does','not'].includes(x)),O=(a,b)=>{const X=new Set(T(a)),Y=new Set(T(b));if(!X.size||!Y.size)return 0;let h=0;X.forEach(x=>{if(Y.has(x))h++});return h/Math.max(1,Math.min(X.size,Y.size))},S=C.split(/(?<=[.!?])\\s+/).filter(Boolean),G=it=>{if(!it.options.length)return null;const r=it.options.map(o=>{let s=0,e='';S.forEach(x=>{const v=O(o.text,x)*.65+O(it.question,x)*.35;if(v>s){s=v;e=x}});return{...o,s,e}}).sort((a,b)=>b.s-a.s),b=r[0],d=r[1];return b&&b.s>=.25&&(!d||b.s-d.s>=.08)?b:null};let root=document.getElementById(I);if(root)root.remove();root=document.createElement('div');root.id=I;root.setAttribute('data-provenance-lens','true');root.style.cssText='position:fixed;right:10px;bottom:10px;width:min(390px,calc(100vw - 20px));max-height:72vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.5);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto';const head=document.createElement('div');head.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#171d2a;border-bottom:1px solid #2a3244';const title=document.createElement('strong');title.textContent='Canvas Lens';const ctr=document.createElement('div'),side=document.createElement('button'),min=document.createElement('button'),close=document.createElement('button');side.textContent='↔';min.textContent='−';close.textContent='×';[side,min,close].forEach(b=>b.style.cssText='margin-left:5px;border:1px solid #3a455e;border-radius:9px;background:#222b3e;color:#fff;padding:6px 8px;font-weight:700');ctr.append(side,min,close);head.append(title,ctr);const B=document.createElement('div');B.style.cssText='padding:10px;overflow:auto;max-height:calc(72vh - 48px)';const meta=document.createElement('div');meta.style.cssText='font-size:11px;color:#aeb8cb;margin-bottom:8px';meta.textContent='Inline review • '+p.items.length+' question'+(p.items.length===1?'':'s')+' • tap bookmark again to rescan';B.appendChild(meta);p.items.forEach((it,i)=>{const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:14px;padding:10px;margin:8px 0;background:#0c1119';const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35';q.textContent=(i+1)+'. '+it.question.slice(0,500);const a=document.createElement('div');a.style.cssText='margin-top:8px;padding:9px;border-radius:10px;background:#141c29';const tag=document.createElement('div');tag.style.cssText='font-size:11px;color:#63e6be;font-weight:800;text-transform:uppercase';tag.textContent='Lens review';const ans=document.createElement('div');ans.style.cssText='margin-top:5px;font-weight:800';const best=G(it),sel=it.options.filter(o=>o.selected);ans.textContent=best?'Best-supported choice: '+best.label+' — '+best.text:(it.options.length?'No single choice is supported clearly enough by visible page context.':'Open-response item detected.');a.append(tag,ans);if(sel.length){const cur=document.createElement('div');cur.style.cssText='margin-top:6px;color:#d8e1f1;font-size:12px';cur.textContent='Currently selected: '+sel.map(o=>o.label+' — '+o.text).join(', ');a.appendChild(cur)};if(best&&best.e){const det=document.createElement('details'),sum=document.createElement('summary'),ev=document.createElement('div');sum.textContent='Evidence';ev.style.cssText='margin-top:6px;color:#aeb8cb;font-size:12px';ev.textContent=best.e;det.append(sum,ev);a.appendChild(det)}box.append(q,a);B.appendChild(box)});if(!p.items.length){const z=document.createElement('div');z.textContent='No question detected. Scroll to a visible question and tap the bookmark again.';B.appendChild(z)}root.append(head,B);document.documentElement.appendChild(root);let col=false,left=false;side.onclick=()=>{left=!left;root.style.right=left?'auto':'10px';root.style.left=left?'10px':'auto'};min.onclick=()=>{col=!col;B.style.display=col?'none':'block';root.style.width=col?'145px':'min(390px,calc(100vw - 20px))';min.textContent=col?'+':'−'};close.onclick=()=>root.remove();root.addEventListener('click',e=>e.stopPropagation());root.addEventListener('pointerdown',e=>e.stopPropagation());root.addEventListener('mouseenter',()=>{if(col){B.style.display='block';root.style.width='min(390px,calc(100vw - 20px))'}});root.addEventListener('mouseleave',()=>{if(col){B.style.display='none';root.style.width='145px'}})})()`;
   return 'javascript:'+code;
 }
 function legacyCopyText(text){
@@ -1050,6 +1161,35 @@ function downloadXLSX(){
   const bytes=makeXLSX();blobDownload(baseName()+'.xlsx',bytes,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 }
 function openNativeFilePicker(){$('fileInput').click()}
+function buildAIHandoff(){
+  const title=$('projectName').value.trim()||'Untitled project',text=$('draft').value.trim();
+  return 'Provenance Studio handoff\nProject: '+title+'\n\nPlease help me work with the material below. Preserve factual accuracy, clearly distinguish verified facts from assumptions, and do not invent citations.\n\n--- PROJECT CONTENT ---\n'+text
+}
+async function copyAIHandoff(){
+  const text=buildAIHandoff();let ok=false;
+  try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);ok=true}}catch(_){}
+  if(!ok&&typeof legacyCopyText==='function')ok=legacyCopyText(text);
+  notice(ok?'AI handoff copied.':'Copy was blocked; use Share AI handoff or Download handoff.')
+}
+async function shareAIHandoff(){
+  const text=buildAIHandoff();
+  if(navigator.share){try{await navigator.share({title:'Provenance AI handoff',text});return}catch(e){if(e&&e.name==='AbortError')return}}
+  await copyAIHandoff()
+}
+function downloadAIHandoff(){blobDownload(baseName()+'-ai-handoff.txt',buildAIHandoff(),'text/plain')}
+function refreshConnectorStatus(){
+  const out=$('connectorStatus');if(!out)return;
+  const rows=[
+    ['Files picker',!!$('fileInput'),'Native import control ready'],
+    ['Share sheet',!!navigator.share,navigator.share?'Available in this browser':'Download/copy fallback active'],
+    ['Clipboard',!!(navigator.clipboard&&window.isSecureContext),(navigator.clipboard&&window.isSecureContext)?'Secure clipboard available':'Legacy/manual copy fallback'],
+    ['Network',navigator.onLine,navigator.onLine?'Online':'Offline — local tools still available'],
+    ['Direct AI API',false,'Not configured in this public client'],
+    ['Service worker','serviceWorker' in navigator,'Offline/update layer '+(('serviceWorker' in navigator)?'supported':'unavailable')]
+  ];
+  out.innerHTML='';
+  rows.forEach(([name,ok,detail])=>{const d=document.createElement('div');d.className='item';d.innerHTML='<div class="connector-state"><span class="connector-dot '+(ok?'good':'warn')+'"></span><strong>'+esc(name)+'</strong></div><div class="small" style="margin-top:5px">'+esc(detail)+'</div>';out.append(d)})
+}
 async function shareProjectFile(){
   const name=baseName()+'.txt', file=new File([$('draft').value],name,{type:'text/plain'});
   if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
@@ -1116,7 +1256,7 @@ function runSelfTest(){
   t('TXT/MD/CSV/JSON parser',()=>typeof handleFile==='function');
   t('DOCX local parser',()=>typeof extractDocx==='function'&&'DecompressionStream' in window);
   t('PDF extraction stack',()=>typeof extractPdf==='function'&&typeof extractPdfSmart==='function'&&typeof extractPdfWithPdfJs==='function'&&typeof ocrPdf==='function');
-  t('Image preview handler',()=>typeof handleImage==='function');
+  t('Image OCR pipeline',()=>typeof handleImage==='function'&&typeof ocrImageFile==='function'&&typeof runPendingImageOcr==='function');
   t('Project save engine',()=>Array.isArray(getProjects()));
   t('Text analysis engine',()=>typeof analyze==='function');
   t('Rewrite engine',()=>typeof rewrite==='function');
@@ -1133,16 +1273,33 @@ function runSelfTest(){
   t('TXT/MD/JSON/CSV export',()=>typeof blobDownload==='function'&&typeof downloadJSON==='function'&&typeof downloadCSV==='function');
   t('XLSX export engine',()=>typeof makeXLSX==='function'&&makeXLSX().length>500);
   t('Native file/share bridge',()=>typeof openNativeFilePicker==='function'&&typeof shareProjectFile==='function');
+  t('AI handoff workflow',()=>typeof buildAIHandoff==='function'&&typeof copyAIHandoff==='function'&&typeof shareAIHandoff==='function');
   t('Web Share support',()=>navigator.share?'Available':'Optional — download fallback active');
   const out=$('testResults');out.innerHTML='<p class="small">Capability checks only. These checks do not verify camera hardware, file contents, AI connections, or every user interaction.</p>';
   tests.forEach(x=>{const d=document.createElement('div');d.className='testline';d.innerHTML='<span>'+esc(x[0])+'</span><strong class="'+(x[1]?'good':'bad')+'">'+(x[1]?'PASS':'FAIL')+'</strong>';out.append(d)});
   showTab('diagnostics')
 }
+async function updateNow(){
+  try{
+    if('caches' in window){const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('provenance-')).map(k=>caches.delete(k)))}
+    if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.update().catch(()=>{})))}
+  }catch(_){}
+  location.replace('./?v='+encodeURIComponent(APP_VERSION)+'&refresh='+Date.now())
+}
+async function ensureLatestVersion(){
+  try{
+    const r=await fetch('./version.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)return;
+    const remote=await r.json();if(remote&&remote.version&&remote.version!==APP_VERSION){
+      $('updateText').textContent='Update available: '+remote.version+' (this page is '+APP_VERSION+').';
+      $('updateBanner').classList.add('show')
+    }
+  }catch(_){}
+}
 function interactiveBoot(){
   try{
     loadCurrent();
     const w=$('runtimeWarning');if(w)w.style.display='none';
-    notice('Ready • Version 3.2.0 • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);
+    notice('Ready • Version '+APP_VERSION+' • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);setTimeout(ensureLatestVersion,250);
   }catch(err){
     const w=$('runtimeWarning');
     if(w){w.style.display='block';w.textContent='Startup recovered with an error: '+((err&&err.message)||err)+'. Reload once, then run health checks.'}
@@ -1155,7 +1312,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && window.isSecureContext) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=3.2.0',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.0.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
 }
 </script>
 </body>

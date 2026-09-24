@@ -51,6 +51,13 @@ async function appSuite(browserType,label,contextOptions){
   await page.locator('#draft').fill(baseText);
   await page.getByRole('button',{name:'Analyze writing'}).click();
   ok(label+' analysis metrics',(await page.locator('#scoreBig').textContent())?.includes('/ 100'));
+  const claimParts=await page.evaluate(()=>claimSentences('Wendy Bracken September 23, 2026 Uber Technologies, Inc.\nCurrently, Uber operates in more than 70 countries (Uber Technologies, Inc., 2026).'));
+  ok(label+' claim parser keeps parenthetical citation intact',claimParts.some(x=>x.includes('(Uber Technologies, Inc., 2026).')));
+  await page.locator('#draft').fill(Array.from({length:18},(_,i)=>'Sentence '+(i+1)+' has enough words to exercise the compact sentence map.').join(' '));
+  await page.getByRole('button',{name:'Analyze writing'}).click();
+  ok(label+' sentence map starts compact',(await page.locator('#sentenceMap .item').count())===10);
+  await page.getByRole('button',{name:/Show all 18 sentences/}).click();
+  ok(label+' sentence map expands',(await page.locator('#sentenceMap .item').count())===18);
 
   const modes=['Humanize','Natural','Clear','Concise','Academic','Direct'];
   await page.locator('.tab[data-tab="rewrite"]').click();
@@ -149,6 +156,12 @@ async function appSuite(browserType,label,contextOptions){
 
   const ocrText=await page.evaluate(async bytes=>await ocrPdf(new Uint8Array(bytes).buffer,()=>{}),Array.from(makeHexPdf('OCR TEST 123')));
   ok(label+' PDF OCR render/recognition pipeline',/OCR|TEST|123/i.test(ocrText),ocrText.slice(0,80).replace(/\s+/g,' '));
+  const imageOcr=await page.evaluate(async()=>{
+    const c=document.createElement('canvas');c.width=700;c.height=180;const x=c.getContext('2d');x.fillStyle='white';x.fillRect(0,0,c.width,c.height);x.fillStyle='black';x.font='bold 52px Arial';x.fillText('SCREENSHOT OCR 321',35,105);
+    const blob=await new Promise(r=>c.toBlob(r,'image/png'));const file=new File([blob],'screenshot.png',{type:'image/png'});
+    return await ocrImageFile(file,'fast',()=>{});
+  });
+  ok(label+' screenshot/image OCR pipeline',/SCREENSHOT|OCR|321/i.test(imageOcr),imageOcr.slice(0,80).replace(/\s+/g,' '));
 
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9WlS4AAAAASUVORK5CYII=','base64');
   await upload.setInputFiles({name:'audit.png',mimeType:'image/png',buffer:png});
@@ -169,7 +182,10 @@ async function appSuite(browserType,label,contextOptions){
   await page.getByRole('button',{name:'Import a document'}).click();
   const fc=await chooser;
   ok(label+' native file-picker bridge',!!fc);
-  ok(label+' connector cards honest',((await page.locator('#panel-connectors').innerText())||'').includes('Not connected in this edition'));
+  const connectorText=(await page.locator('#panel-connectors').innerText())||'';
+  ok(label+' connector cards honest',connectorText.includes('Direct authenticated model API: not configured'));
+  const handoff=await page.evaluate(()=>buildAIHandoff());
+  ok(label+' AI handoff includes current project',handoff.includes('PROJECT CONTENT')&&handoff.includes(document.getElementById('draft').value.slice(0,20)));
 
   await page.locator('.tab[data-tab="diagnostics"]').click();
   await page.getByRole('button',{name:'Run health checks'}).click();
@@ -188,6 +204,8 @@ async function appSuite(browserType,label,contextOptions){
     return {ok:!!reg,detail:reg?'registered':'no registration'};
   });
   ok(label+' service worker registration',swStatus.ok,swStatus.detail);
+  ok(label+' app version constant',await page.evaluate(()=>APP_VERSION==='4.0.0'));
+  ok(label+' update banner control exists',(await page.locator('#updateBanner').count())===1);
 
   await page.screenshot({path:'test/artifacts/stress-'+label.replace(/\s+/g,'-')+'.png',fullPage:false});
   ok(label+' runtime console clean',runtime.length===0,runtime.join(' | '));
@@ -197,7 +215,7 @@ async function appSuite(browserType,label,contextOptions){
 async function canvasSuite(browserType,label,contextOptions){
   const browser=await browserType.launch({headless:true});
   const context=await browser.newContext(contextOptions);
-  const modes={classic:2,new:2,aria:2,select:2,hidden:2,mixed:6,observed:1,long:80};
+  const modes={classic:2,new:2,aria:2,select:2,hidden:2,mixed:6,observed:1,selected:1,long:80};
   for(const [mode,count] of Object.entries(modes)){
     const page=await context.newPage();
     await page.goto(base+'test/canvas-compat.html?mode='+mode,{waitUntil:'networkidle'});
@@ -205,8 +223,9 @@ async function canvasSuite(browserType,label,contextOptions){
     await page.waitForFunction(expected=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes(expected+' question block'),count);
     const text=await page.locator('#provenance-canvas-lens-v2').innerText();
     ok(label+' Canvas '+mode+' detection',text.includes(count+' question block'),text.split('\n')[0]);
+    const expectedSelected=mode==='selected'?1:0;
     const selected=await page.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
-    ok(label+' Canvas '+mode+' no auto-selection',selected===0,selected+' selected');
+    ok(label+' Canvas '+mode+' preserves answer controls',selected===expectedSelected,selected+' selected');
     const ctx=await page.evaluate(()=>{const r=document.getElementById('provenance-canvas-lens-v2');return !!r&&r.getBoundingClientRect().width>0&&r.getBoundingClientRect().height>0&&r.innerText.includes('question block')});
     ok(label+' Canvas '+mode+' overlay visible',ctx);
     if(mode==='classic'){
@@ -222,6 +241,10 @@ async function canvasSuite(browserType,label,contextOptions){
       ok(label+' Canvas observed first option clean',overlayAll.includes('A. The distinction between nature and culture is becoming increasingly blurred.'));
       ok(label+' Canvas observed option is not whole question block',!overlayAll.includes('A. Question 1 0.8 pts'));
       ok(label+' Canvas observed overlay shows no percentages',!/%/.test(overlayAll));
+    }
+    if(mode==='selected'){
+      const overlayText=await page.locator('#provenance-canvas-lens-v2').innerText();
+      ok(label+' Canvas Lens reports current selection',overlayText.includes('Currently selected in Canvas: B — Nature and culture are independent and do not influence each other.'));
     }
     await page.close();
   }
@@ -249,6 +272,13 @@ async function canvasSuite(browserType,label,contextOptions){
   const originalUrl=transfer.url(),pageCount=context.pages().length;
   ok(label+' Canvas inline review stays on Canvas',(await transfer.locator('#provenance-canvas-lens-v2').innerText()).includes('Inline review'));
   ok(label+' Canvas has no app-switch review buttons',(await transfer.getByRole('button',{name:/Open .*Provenance|Open deeper review/}).count())===0);
+  await transfer.getByRole('button',{name:'Move Canvas Lens to other side'}).click();
+  ok(label+' Canvas Lens side toggle works',(await transfer.locator('#provenance-canvas-lens-v2').evaluate(el=>getComputedStyle(el).left))!=='auto');
+  await transfer.getByText('Review notes',{exact:true}).click();
+  const lensNotes=transfer.locator('#provenance-canvas-lens-v2 textarea');
+  await lensNotes.fill('Photosynthesis evidence note for regression.');
+  await transfer.getByRole('button',{name:'Apply notes'}).click();
+  ok(label+' Canvas Lens review notes persist',(await lensNotes.inputValue()).includes('Photosynthesis evidence note'));
   await transfer.getByRole('button',{name:'Minimize Canvas Lens'}).click();
   ok(label+' Canvas dock minimizes',await transfer.locator('#provenance-canvas-lens-v2 [data-body]').isHidden());
   await transfer.locator('#provenance-canvas-lens-v2').hover();

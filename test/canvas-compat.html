@@ -47,6 +47,7 @@ if(mode==='select')host.innerHTML=selects();
 if(mode==='hidden')host.innerHTML=classic()+'<div class="question hidden" data-question-id="99"><div class="question_text">Hidden question</div><input type="radio"></div>';
 if(mode==='mixed')host.innerHTML=mixed();
 if(mode==='observed')host.innerHTML=observed();
+if(mode==='selected'){host.innerHTML=observed();document.getElementById('obs2').checked=true;}
 if(mode==='dynamic'){
   host.innerHTML='<div class="question" data-question-id="1"><div class="question_text">Initial dynamic question?</div><label><input type="radio"> Yes</label><label><input type="radio"> No</label></div>';
   setTimeout(()=>{host.insertAdjacentHTML('beforeend','<div class="question" data-question-id="2"><div class="question_text">Loaded later?</div><label><input type="radio"> Yes</label><label><input type="radio"> No</label></div>')},700);

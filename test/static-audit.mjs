@@ -8,6 +8,7 @@ const manifest=JSON.parse(read('browser-extension/manifest.json'));
 const smoke=read('test/smoke.html');
 const sw=read('sw.js');
 const workflow=read('.github/workflows/pages.yml');
+const version=JSON.parse(read('version.json'));
 
 const results=[];
 function check(name,ok,detail=''){
@@ -50,6 +51,9 @@ check('Canvas overlay uses live postMessage bridge',overlay.includes('PROVENANCE
 check('Canvas overlay has mobile same-tab fallback',overlay.includes('compactPayload')&&overlay.includes("iPad|iPhone|iPod"));
 check('Canvas overlay isolates host-page events',overlay.includes("root.addEventListener('pointerdown'")&&overlay.includes("root.addEventListener('click'"));
 check('Canvas overlay uses inline hover dock',overlay.includes('Inline review')&&overlay.includes("data-a=\"toggle\"")&&overlay.includes("mouseenter")&&overlay.includes("mouseleave"));
+check('Canvas Lens can move sides',overlay.includes('data-a="side"')&&overlay.includes("lensSide==='right'?'left':'right'"));
+check('Canvas Lens reports current selection',overlay.includes('Currently selected in Canvas'));
+check('Canvas Lens supports local review notes',overlay.includes('provenance-canvas-lens-notes-v1')&&overlay.includes('Apply notes'));
 check('Canvas overlay removes app-switch review controls',!overlay.includes('Open deeper review')&&!overlay.includes('Open all in Provenance'));
 check('Canvas overlay does not auto-submit',!/(\.submit\(|requestSubmit\(|click\(\).*submit)/i.test(overlay));
 check('Canvas app accepts live page bridge',index.includes("window.addEventListener('message'")&&index.includes('handleCanvasPayload'));
@@ -64,9 +68,17 @@ check('Canvas extension runs in frames',manifest.content_scripts?.[0]?.all_frame
 check('Canvas extension declares Canvas hosts',(manifest.host_permissions||[]).some(x=>x.includes('instructure.com')));
 check('Canvas fixture present',read('test/canvas-fixture.html').includes('data-question-id="1"'));
 check('Live smoke test present',smoke.includes('ALL LIVE SMOKE TESTS PASSED'));
-check('Service worker cache is v3.2.0',sw.includes("provenance-v3-2-0"));
+check('Service worker cache is v4.0.0',sw.includes("provenance-v4-0-0"));
+check('Version endpoint matches release',version.version==='4.0.0'&&index.includes("APP_VERSION='4.0.0'"));
+check('Stale-version recovery present',index.includes('ensureLatestVersion')&&index.includes('updateNow')&&sw.includes("cache:'reload'"));
 check('Advanced PDF.js fallback present',index.includes('extractPdfWithPdfJs')&&index.includes('pdfjs-dist@6.3.289'));
 check('Scanned PDF OCR fallback present',index.includes('ocrPdf')&&index.includes('tesseract.js@7.0.0'));
+check('Image/screenshot OCR present',index.includes('ocrImageFile')&&index.includes('runPendingImageOcr'));
+check('OCR has fast/accurate modes',index.includes('Fast mobile')&&index.includes('Accurate')&&index.includes('ocrScale'));
+check('OCR progress is compact and cancellable',index.includes('ocrProgressBar')&&index.includes('cancelOcr'));
+check('Connector hub has functional AI handoff',index.includes('buildAIHandoff')&&index.includes('copyAIHandoff')&&index.includes('shareAIHandoff'));
+check('Claim checker has citation-aware splitter',index.includes('claimSentences')&&index.includes('PVCITE'));
+check('Sentence map is compact/expandable',index.includes('toggleSentenceMap')&&index.includes('Show all sentences'));
 check('Deployment no longer cancels superseded runs',workflow.includes('cancel-in-progress: false'));
 
 for(const r of results) console.log((r.ok?'PASS':'FAIL')+'  '+r.name+(r.detail?' — '+r.detail:''));

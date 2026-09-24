@@ -1,16 +1,24 @@
 {
   "name": "Provenance Studio",
   "short_name": "Provenance",
-  "description": "Local-first writing intelligence studio",
-  "start_url": "./",
+  "description": "Local-first writing, document OCR, connector handoff, and Canvas review studio",
+  "start_url": "./?v=4.0.0",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0b0d12",
   "theme_color": "#10131a",
-  "icons": [{
-    "src": "./icon.svg",
-    "sizes": "any",
-    "type": "image/svg+xml",
-    "purpose": "any maskable"
-  }]
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "id": "./",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ]
 }

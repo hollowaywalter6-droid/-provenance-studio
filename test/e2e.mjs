@@ -23,6 +23,8 @@ async function appRun(name,viewport){
   await page.goto(base+'index.html?qa=e2e',{waitUntil:'networkidle'});
   await page.waitForFunction(()=>getComputedStyle(document.getElementById('runtimeWarning')).display==='none');
   pass(name+' booted',await page.locator('#draft').isVisible());
+  pass(name+' current release version',await page.evaluate(()=>APP_VERSION==='4.0.0'));
+  if(name==='mobile')pass(name+' mobile hero orb removed',await page.locator('.orbwrap').evaluate(el=>getComputedStyle(el).display==='none'));
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
   pass(name+' has no horizontal overflow',overflow<=2,'overflow '+overflow+'px');
 
@@ -60,12 +62,16 @@ async function appRun(name,viewport){
   await upload.setInputFiles({name:'audit.txt',mimeType:'text/plain',buffer:Buffer.from('Uploaded text parser audit content.')});
   await page.waitForFunction(()=>document.getElementById('draft').value.includes('Uploaded text parser audit content.'));
   pass(name+' TXT upload parser works',true);
+  const claimSplit=await page.evaluate(()=>claimSentences('Uber operates in more than 70 countries (Uber Technologies, Inc., 2026).'));
+  pass(name+' claim parser preserves citations',claimSplit.length===1&&claimSplit[0].includes('Inc., 2026'));
 
   const xlsx=await page.evaluate(()=>makeXLSX().length);
   pass(name+' XLSX generator works',xlsx>500,xlsx+' bytes');
 
   await page.locator('.tab[data-tab="connectors"]').click();
   pass(name+' connector controls render',await page.getByRole('button',{name:'Import a document'}).isVisible()&&await page.getByRole('button',{name:'Save/share project file'}).isVisible());
+  pass(name+' AI handoff connector renders',await page.getByRole('button',{name:'Copy AI handoff'}).isVisible()&&await page.getByRole('button',{name:'Share AI handoff'}).isVisible());
+  pass(name+' AI handoff is functional',(await page.evaluate(()=>buildAIHandoff())).includes('PROJECT CONTENT'));
 
   await page.locator('.tab[data-tab="canvas"]').click();
   await page.getByRole('button',{name:'Show setup steps'}).click();
@@ -101,6 +107,7 @@ const demoText=await canvas.locator('#provenance-canvas-lens-v2').innerText();
 pass('Canvas Lens fixture evidence ranking favors Chlorophyll',demoText.includes('Best-supported page-context choice: B — Chlorophyll'));
 pass('Canvas Lens overlay shows no percentage scores',!/%/.test(demoText));
 pass('Canvas Lens renders inline review on Canvas',demoText.includes('Inline review'));
+pass('Canvas Lens side control exists',await canvas.getByRole('button',{name:'Move Canvas Lens to other side'}).isVisible());
 
 await canvas.evaluate(()=>{
   const q=document.createElement('div');q.className='question';q.dataset.questionId='3';

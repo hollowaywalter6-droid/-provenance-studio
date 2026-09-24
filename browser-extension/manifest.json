@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Provenance Canvas Lens",
-  "version": "1.5.0",
-  "description": "Reads visible Canvas question/page content and opens an on-page Provenance review overlay. Auto-rescans dynamic Canvas views and never auto-submits assessments.",
+  "version": "2.0.0",
+  "description": "Provenance Canvas Lens inline review overlay with dynamic Canvas detection, mobile-friendly dock, current-selection awareness, and local review notes.",
   "permissions": [],
   "host_permissions": [
     "https://*.instructure.com/*",
