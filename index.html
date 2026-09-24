@@ -257,8 +257,18 @@ input[type="range"]{padding:0;background:transparent;border:0}
     <div class="panel" id="panel-canvas">
       <div class="two">
         <div>
-          <div class="kicker">Canvas Study Assist</div>
-          <p class="small">Paste practice questions, homework prompts, or review questions here. The app builds study suggestions from the notes/context you provide and requires you to approve each item one by one. It does not auto-submit answers or invisibly fill a live Canvas quiz.</p>
+          <div class="kicker">Canvas Lens + Study Assist</div>
+          <p class="small">The Canvas Lens reads visible Canvas page content and sends detected questions, choices, and surrounding context directly into this workspace without manual copy/paste. It stays in review mode and does not auto-submit assessments.</p>
+          <div class="item" style="margin-bottom:14px">
+            <strong>Overlay setup</strong>
+            <div class="small" style="margin:7px 0">Desktop: use the included browser extension for an automatic on-page Lens. iPhone/iPad Safari: use the one-time Lens bookmarklet. A normal standalone web app cannot directly read another website unless the browser grants page access through a page bridge.</div>
+            <div class="toolbar">
+              <button class="primary" onclick="copyCanvasBookmarklet()">Copy iPhone Lens bookmarklet</button>
+              <button onclick="openCanvasLensDemo()">Open live Lens demo</button>
+              <button onclick="showCanvasSetup()">Show setup steps</button>
+            </div>
+            <div id="canvasSetup" class="result" style="display:none;min-height:90px"></div>
+          </div>
           <div class="label">Questions / prompt set</div>
           <textarea id="canvasQuestions" placeholder="1. Question text&#10;A. Option one&#10;B. Option two&#10;&#10;2. Short-answer prompt..."></textarea>
           <div class="label" style="margin-top:12px">Your notes / source material</div>
@@ -271,7 +281,8 @@ input[type="range"]{padding:0;background:transparent;border:0}
         </div>
         <div>
           <div class="kicker">Approval queue</div>
-          <p class="small">Each suggestion stays local until you approve it. “Approve & copy” copies only that reviewed item so you can decide what, if anything, to enter yourself.</p>
+          <p class="small">When the Lens sends a Canvas page, the detected questions and page context appear here automatically. Each suggestion stays local until you approve it.</p>
+          <div id="canvasBridgeStatus" class="badge" style="margin-bottom:10px">Waiting for Canvas Lens</div>
           <div id="studyQueue" class="list"><div class="small">No questions loaded.</div></div>
         </div>
       </div>
@@ -318,11 +329,11 @@ input[type="range"]{padding:0;background:transparent;border:0}
     </div>
 
     <div class="panel" id="panel-diagnostics">
-      <div class="toolbar"><button class="primary" onclick="runSelfTest()">Run health checks</button></div>
+      <div class="toolbar"><button class="primary" onclick="runSelfTest()">Run health checks</button><button onclick="runDeepQA()">Run deep QA</button></div>
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v2.4 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v2.5 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
@@ -652,6 +663,46 @@ function removeFiltered(){
   filterTerms().forEach(term=>{t=t.replace(new RegExp('\\b'+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','gi'),'')});
   $('draft').value=cleanupCommon(t).replace(/PVURLTOKEN(\d+)END/g,(_,i)=>urls[+i]);onDraftChange();$('filterResult').textContent='Selected terms removed. Links preserved.'
 }
+const CANVAS_LENS_URL='https://hollowaywalter6-droid.github.io/-provenance-studio/';
+function canvasBookmarklet(){
+  const overlay='https://hollowaywalter6-droid.github.io/-provenance-studio/canvas-overlay.js?v=1';
+  const fallback="javascript:(()=>{const A='https://hollowaywalter6-droid.github.io/-provenance-studio/',n=s=>String(s||'').replace(/\\s+/g,' ').trim(),Q=[...document.querySelectorAll('.question,.quiz_question,[data-question-id]')],P=Q.map((e,i)=>({index:i+1,question:n((e.querySelector('.question_text,.question_name,legend,h1,h2,h3,h4')||e).innerText).slice(0,1200),options:[...e.querySelectorAll('input[type=radio],input[type=checkbox]')].map((x,j)=>({label:String.fromCharCode(65+j),text:n((x.closest('label')||x.parentElement).innerText)}))})),d={title:document.title,url:location.href,context:n(document.body.innerText).slice(0,16000),items:P.length?P:[{index:1,question:n(document.body.innerText).slice(0,6000),options:[]}]};open(A+'#canvas='+encodeURIComponent(JSON.stringify(d)),'_blank')})()";
+  return "javascript:(()=>{let s=document.createElement('script');s.src='"+overlay+"';s.onerror=()=>{"+fallback.slice(11)+"};document.documentElement.appendChild(s)})()";
+}
+async function copyCanvasBookmarklet(){
+  const code=canvasBookmarklet();
+  try{await navigator.clipboard.writeText(code);notice('Canvas Lens bookmarklet copied. Use “Show setup steps” for iPhone Safari setup.')}
+  catch(e){$('canvasSetup').style.display='block';$('canvasSetup').textContent=code;notice('Clipboard access was blocked. The bookmarklet code is shown in setup.')}
+}
+function showCanvasSetup(){
+  const el=$('canvasSetup');
+  el.style.display=el.style.display==='none'?'block':'none';
+  el.textContent='iPhone/iPad Safari one-time setup:\n\n1. Bookmark any page in Safari and name it “Provenance Lens.”\n2. Edit that bookmark.\n3. Replace its address with the Lens bookmarklet you copied.\n4. On a Canvas page, open Bookmarks and tap “Provenance Lens.”\n5. The Lens scans visible Canvas content and opens the detected questions here automatically.\n\nDesktop: the repository includes browser-extension/ for an automatic Canvas overlay.';
+}
+function openCanvasLensDemo(){window.open('./test/canvas-fixture.html','_blank')}
+function importCanvasHash(){
+  if(!location.hash.startsWith('#canvas='))return false;
+  try{
+    const payload=JSON.parse(decodeURIComponent(location.hash.slice(8)));
+    const items=Array.isArray(payload.items)?payload.items:[];
+    $('canvasQuestions').value=items.map(function(item,i){
+      const q=(i+1)+'. '+String(item.question||('Question '+(i+1)));
+      const opts=(item.options||[]).map(function(o,j){return (o.label||String.fromCharCode(65+j))+'. '+String(o.text||'')}).join('\n');
+      return q+(opts?'\n'+opts:'');
+    }).join('\n\n');
+    $('canvasNotes').value=String(payload.context||'');
+    const status=$('canvasBridgeStatus');
+    if(status)status.textContent='Canvas Lens connected • '+items.length+' item'+(items.length===1?'':'s')+' received';
+    buildStudyQueue();
+    showTab('canvas');
+    history.replaceState(null,'',location.pathname+location.search);
+    notice('Canvas page captured automatically. Review the detected items below.');
+    return true;
+  }catch(err){
+    const status=$('canvasBridgeStatus');if(status)status.textContent='Canvas Lens import failed';
+    notice('Canvas Lens import could not be decoded.');return false;
+  }
+}
 let studyItems=[];
 function tokenizeStudy(s){
   const stop=new Set(['the','a','an','and','or','but','of','to','in','on','for','is','are','was','were','be','with','that','this','it','as','by','from','at','which','what','why','how','when','where','who']);
@@ -827,6 +878,37 @@ async function shareProjectFile(){
 async function copyDraft(){try{await navigator.clipboard.writeText($('draft').value);alert('Copied.')}catch(e){alert('Copy is not available in this browser. Select the text manually.')}}
 async function shareDraft(){if(navigator.share){try{await navigator.share({title:$('projectName').value||'Provenance draft',text:$('draft').value})}catch(e){}}else copyDraft()}
 
+function runDeepQA(){
+  const results=[];
+  function add(name,ok,detail){results.push([name,!!ok,detail||''])}
+  try{
+    const tabs=[...document.querySelectorAll('.tab')],original=document.querySelector('.tab.active')?.dataset.tab||'draft';
+    add('All tabs have panels',tabs.every(function(t){return !!$('panel-'+t.dataset.tab)}),tabs.length+' tabs checked');
+    let visiblePass=true;
+    tabs.forEach(function(t){showTab(t.dataset.tab);const p=$('panel-'+t.dataset.tab);if(!p||getComputedStyle(p).display==='none'||p.getBoundingClientRect().width===0)visiblePass=false});
+    showTab(original);
+    add('Every panel renders visibly',visiblePass,'Each tab was opened and measured');
+  }catch(e){add('Tab visual traversal',false,e.message)}
+  try{
+    const buttons=[...document.querySelectorAll('button')],bad=buttons.filter(function(b){const r=b.getBoundingClientRect();return r.width===0||r.height===0});
+    add('Visible button geometry',bad.length===0,(buttons.length-bad.length)+'/'+buttons.length+' buttons measured');
+  }catch(e){add('Button geometry',false,e.message)}
+  try{
+    const sample='1. Which item matches the notes?\nA. Alpha\nB. Beta\n\n2. Explain the concept.';
+    const parsed=splitStudyQuestions(sample).map(parseStudyBlock);
+    add('Canvas question parser',parsed.length===2&&parsed[0].options.length===2,'Parsed '+parsed.length+' items');
+  }catch(e){add('Canvas parser',false,e.message)}
+  try{
+    const bm=canvasBookmarklet();add('Canvas Lens page bridge',bm.startsWith('javascript:')&&bm.length>200,bm.length+' characters');
+  }catch(e){add('Canvas Lens bridge',false,e.message)}
+  try{
+    const x=makeXLSX();add('XLSX generator',x&&x.length>500,(x&&x.length||0)+' bytes generated');
+  }catch(e){add('XLSX generator',false,e.message)}
+  const out=$('testResults');out.innerHTML='<p class="small">Deep QA runs non-destructive interaction and rendering checks inside this browser. It cannot certify every external Canvas layout or every device/browser combination.</p>';
+  results.forEach(function(x){const d=document.createElement('div');d.className='testline';d.innerHTML='<span>'+esc(x[0])+'<div class="small">'+esc(x[2])+'</div></span><strong class="'+(x[1]?'good':'bad')+'">'+(x[1]?'PASS':'FAIL')+'</strong>';out.append(d)});
+  showTab('diagnostics');
+  notice(results.every(function(x){return x[1]})?'Deep QA passed in this browser.':'Deep QA found an issue; review the failed checks.')
+}
 function runSelfTest(){
   const tests=[];
   function t(name,fn){try{const ok=fn();tests.push([name,!!ok,ok===true?'Passed':String(ok||'Failed')])}catch(e){tests.push([name,false,e.message])}}
@@ -852,6 +934,7 @@ function runSelfTest(){
   t('Study Assist',()=>typeof studyAssist==='function');
   t('Canvas Study parser',()=>typeof splitStudyQuestions==='function'&&parseStudyBlock('1. Example question\nA. One\nB. Two',0).options.length===2);
   t('Canvas approval gate',()=>typeof approveStudyItem==='function'&&Array.isArray(studyItems));
+  t('Canvas Lens bridge',()=>typeof importCanvasHash==='function'&&typeof canvasBookmarklet==='function'&&canvasBookmarklet().startsWith('javascript:'));
   t('Humanize controls',()=>!!$('rewriteTone')&&!!$('humanizeStrength')&&typeof humanizeLocal==='function');
   t('Advanced writing signals',()=>!!$('burstMetric')&&!!$('lexicalMetric')&&!!$('analysisDetail'));
   t('TXT/MD/JSON/CSV export',()=>typeof blobDownload==='function'&&typeof downloadJSON==='function'&&typeof downloadCSV==='function');
@@ -866,7 +949,7 @@ function interactiveBoot(){
   try{
     loadCurrent();
     const w=$('runtimeWarning');if(w)w.style.display='none';
-    notice('Ready • Version 2.4 • Local tools available.');updateHumanizeLabel();
+    notice('Ready • Version 2.5 • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);
   }catch(err){
     const w=$('runtimeWarning');
     if(w){w.style.display='block';w.textContent='Startup recovered with an error: '+((err&&err.message)||err)+'. Reload once, then run health checks.'}
@@ -879,7 +962,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.4',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.5',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
 }
 </script>
 </body>
