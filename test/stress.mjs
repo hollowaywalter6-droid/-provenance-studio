@@ -185,8 +185,8 @@ async function appSuite(browserType,label,contextOptions){
   ok(label+' native file-picker bridge',!!fc);
   const connectorText=(await page.locator('#panel-connectors').innerText())||'';
   ok(label+' connector cards honest',connectorText.includes('Direct authenticated model API: not configured'));
-  const handoff=await page.evaluate(()=>buildAIHandoff());
-  ok(label+' AI handoff includes current project',handoff.includes('PROJECT CONTENT')&&handoff.includes(document.getElementById('draft').value.slice(0,20)));
+  const handoffState=await page.evaluate(()=>({handoff:buildAIHandoff(),draft:document.getElementById('draft').value}));
+  ok(label+' AI handoff includes current project',handoffState.handoff.includes('PROJECT CONTENT')&&handoffState.handoff.includes(handoffState.draft.slice(0,20)));
 
   await page.locator('.tab[data-tab="diagnostics"]').click();
   await page.getByRole('button',{name:'Run health checks'}).click();

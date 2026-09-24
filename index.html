@@ -877,7 +877,7 @@ function claimSentences(text){
   String(text||'').replace(/\r/g,'').split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(line=>{
     const kept=[];let t=line.replace(/\([^()]{0,260}\b(?:19|20)\d{2}[a-z]?[^()]{0,140}\)/gi,m=>{kept.push(m);return ' PVCITE'+(kept.length-1)+'TOKEN '});
     const abbr=[];t=t.replace(/\b(?:Inc|Corp|Co|Ltd|LLC|Dr|Mr|Ms|Prof|Sr|Jr|U\.S|e\.g|i\.e)\./gi,m=>{abbr.push(m);return ' PVABBR'+(abbr.length-1)+'TOKEN '});
-    sents(t).forEach(s=>out.push(s.replace(/PVCITE(\d+)TOKEN/g,(_,i)=>kept[+i]).replace(/PVABBR(\d+)TOKEN/g,(_,i)=>abbr[+i]).replace(/\s+/g,' ').trim()))
+    sents(t).forEach(s=>out.push(s.replace(/PVCITE(\d+)TOKEN/g,(_,i)=>kept[+i]).replace(/PVABBR(\d+)TOKEN/g,(_,i)=>abbr[+i]).replace(/\s+/g,' ').replace(/\)\s+([.!?,;:])/g,')$1').trim()))
   });
   return out.filter(Boolean)
 }
