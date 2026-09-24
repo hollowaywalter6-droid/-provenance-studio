@@ -104,10 +104,20 @@ await canvas.waitForSelector('#provenance-canvas-lens-v2');
 await canvas.waitForFunction(()=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes('2 question blocks detected'));
 pass('Canvas Lens detects classic Canvas-style questions',true);
 const demoText=await canvas.locator('#provenance-canvas-lens-v2').innerText();
-pass('Canvas Lens fixture evidence ranking favors Chlorophyll',demoText.includes('Best-supported page-context choice: B — Chlorophyll'));
+pass('Canvas Lens fixture evidence ranking favors Chlorophyll',demoText.includes('Best-supported by visible evidence: B — Chlorophyll'));
 pass('Canvas Lens overlay shows no percentage scores',!/%/.test(demoText));
 pass('Canvas Lens renders inline review on Canvas',demoText.includes('Inline review'));
 pass('Canvas Lens side control exists',await canvas.getByRole('button',{name:'Move Canvas Lens to other side'}).isVisible());
+
+const feedbackPage=await context.newPage();
+await feedbackPage.setViewportSize({width:390,height:844});
+await feedbackPage.goto(base+'test/canvas-compat.html?mode=nestedfeedback',{waitUntil:'networkidle'});
+await feedbackPage.waitForSelector('#provenance-canvas-lens-v2');
+const feedbackText=await feedbackPage.locator('#provenance-canvas-lens-v2').innerText();
+pass('Canvas Lens deduplicates nested real-world question',feedbackText.split('What is the relationship between nature and culture in shaping reality?').length-1===1);
+pass('Canvas Lens reads Canvas confirmed feedback',feedbackText.includes('Canvas feedback identifies: B — Nature limits culture, while culture shapes nature over time.'));
+pass('Canvas Lens preserves wrong selected answer without changing it',(await feedbackPage.locator('input[type="radio"]:checked').count())===1);
+await feedbackPage.close();
 
 await canvas.evaluate(()=>{
   const q=document.createElement('div');q.className='question';q.dataset.questionId='3';

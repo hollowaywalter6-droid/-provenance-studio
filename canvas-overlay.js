@@ -88,17 +88,29 @@
     const txt=norm(clone.innerText);
     return (txt||('Question '+(index+1))).slice(0,1600);
   }
+  function choiceFeedback(input,root){
+    let node=input,depth=0,signals='';
+    while(node&&node!==root&&depth<5){
+      const cls=typeof node.className==='string'?node.className:'';
+      signals+=' '+cls+' '+(node.getAttribute?.('aria-label')||'')+' '+(node.getAttribute?.('title')||'')+' '+(node.getAttribute?.('data-testid')||'');
+      node=node.parentElement;depth++;
+    }
+    const low=signals.toLowerCase();
+    if(/incorrect|wrong|answer[_-]?incorrect|marked[_-]?incorrect/.test(low))return 'incorrect';
+    if(/correct[_-]?answer|answer[_-]?correct|\bcorrect\b|marked[_-]?correct/.test(low))return 'correct';
+    return '';
+  }
   function parseOptions(el){
     const out=[];
     const choiceControls=[...el.querySelectorAll('input[type="radio"],input[type="checkbox"],[role="radio"],[role="checkbox"]')].filter(visible);
     choiceControls.forEach((input,i)=>{
       const text=labelText(input,el);
-      if(text&&!out.some(o=>o.text===text))out.push({label:String.fromCharCode(65+out.length),text,type:(input.getAttribute('role')||input.type||'choice'),selected:!!input.checked||input.getAttribute('aria-checked')==='true'});
+      if(text&&!out.some(o=>o.text===text))out.push({label:String.fromCharCode(65+out.length),text,type:(input.getAttribute('role')||input.type||'choice'),selected:!!input.checked||input.getAttribute('aria-checked')==='true',feedback:choiceFeedback(input,el)});
     });
     [...el.querySelectorAll('select')].filter(visible).forEach(sel=>{
       [...sel.options].filter(o=>!o.disabled&&norm(o.text)).forEach(o=>{
         const text=norm(o.text);
-        if(!out.some(x=>x.text===text))out.push({label:String.fromCharCode(65+out.length),text,type:'select',selected:!!o.selected});
+        if(!out.some(x=>x.text===text))out.push({label:String.fromCharCode(65+out.length),text,type:'select',selected:!!o.selected,feedback:''});
       });
     });
     return out;
@@ -106,7 +118,24 @@
   function parseQuestion(el,index){
     const options=parseOptions(el);
     const openResponse=!!el.querySelector('textarea,input[type="text"],input[type="number"],[contenteditable="true"]');
-    return {index:index+1,question:questionText(el,index),options,openResponse};
+    const r=el.getBoundingClientRect(),mid=(r.top+r.bottom)/2,vh=Math.max(1,innerHeight||document.documentElement.clientHeight||1);
+    return {index:index+1,question:questionText(el,index),options,openResponse,inView:r.bottom>0&&r.top<vh,viewportDistance:Math.round(Math.abs(mid-vh/2))};
+  }
+  function questionSignature(item){
+    return norm(item.question).toLowerCase()+'||'+item.options.map(o=>norm(o.text).toLowerCase()).join('|');
+  }
+  function uniqueQuestions(nodes){
+    const seen=new Map(),pairs=[];
+    nodes.forEach((el,i)=>{
+      const item=parseQuestion(el,i),sig=questionSignature(item);
+      if(!item.question||item.question.length<3)return;
+      const prev=seen.get(sig);
+      if(!prev){const pair={el,item};seen.set(sig,pair);pairs.push(pair);return}
+      if(item.viewportDistance<prev.item.viewportDistance){prev.el=el;prev.item=item}
+    });
+    pairs.sort((a,b)=>a.el.compareDocumentPosition(b.el)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);
+    pairs.forEach((p,i)=>p.item.index=i+1);
+    return pairs
   }
   function pageContext(questionNodes){
     const clone=document.body.cloneNode(true);
@@ -138,27 +167,35 @@
   function localResponse(item,context){
     const ev=topEvidence(item.question,context);
     if(item.options.length){
+      const confirmed=item.options.find(o=>o.feedback==='correct');
+      const rejected=item.options.filter(o=>o.feedback==='incorrect'&&o.selected);
+      if(confirmed){
+        return {headline:'Canvas feedback identifies: '+confirmed.label+' — '+confirmed.text,detail:'Canvas itself marks this choice as correct on the current page.',evidence:ev,source:'canvas-feedback'};
+      }
+      if(rejected.length){
+        return {headline:'Canvas feedback: '+rejected[0].label+' — '+rejected[0].text+' is marked incorrect.',detail:'The current page does not expose a confirmed correct choice to Lens, so Lens will not guess.',evidence:ev,source:'canvas-feedback'};
+      }
       const ranked=item.options.map(o=>({...o,score:optionEvidenceScore(item,o,context)})).sort((x,y)=>y.score-x.score);
       const best=ranked[0],second=ranked[1],clear=best&&best.score>=25&&(!second||best.score-second.score>=5);
-      return {headline:clear?'Best-supported page-context choice: '+best.label+' — '+best.text:'No single option is strongly supported by the visible page context.',detail:clear?'This choice has the strongest support in the captured page context. Review that context before using it.':'No clear choice is supported. Expand Evidence below to inspect the captured context.',evidence:ev};
+      return {headline:clear?'Best-supported by visible evidence: '+best.label+' — '+best.text:'No single choice is supported clearly enough by visible evidence.',detail:clear?'This is an evidence match, not a guaranteed answer. Review the evidence below.':'Lens will not guess when the page does not contain enough supporting evidence.',evidence:ev,source:'evidence'};
     }
-    return {headline:ev.length?'Response notes from this page':'No supporting context found on this page.',detail:ev.length?ev.map(x=>'• '+x.text).join('\n'):'No supporting page context was found. Add or open relevant source material, then rescan.',evidence:ev};
+    return {headline:ev.length?'Response notes from this page':'No supporting context found on this page.',detail:ev.length?ev.map(x=>'• '+x.text).join('\n'):'No supporting page context was found. Add class notes or source material, then rescan.',evidence:ev,source:'evidence'};
   }
   function scan(){
-    const nodes=candidateRoots(),items=nodes.map(parseQuestion).filter(x=>x.question.length>2);
+    const pairs=uniqueQuestions(candidateRoots()),nodes=pairs.map(p=>p.el),items=pairs.map(p=>p.item);
     const iframeCount=[...document.querySelectorAll('iframe')].filter(visible).length;
     return {
-      type:'PROVENANCE_CANVAS_CAPTURE',version:2,
+      type:'PROVENANCE_CANVAS_CAPTURE',version:3,
       payload:{
         title:document.title,url:location.href,items,context:pageContext(nodes),
-        meta:{frame:window.top===window.self?'top':'embedded',iframeCount,capturedAt:new Date().toISOString()}
+        meta:{frame:window.top===window.self?'top':'embedded',iframeCount,capturedAt:new Date().toISOString(),deduplicated:true}
       }
     };
   }
   function compactPayload(capture,item){
     const p=capture.payload||{},items=(item?[item]:(p.items||[])).slice(0,20).map((q,i)=>({
       index:i+1,question:String(q.question||'').slice(0,900),
-      options:(q.options||[]).slice(0,12).map(o=>({label:String(o.label||'').slice(0,8),text:String(o.text||'').slice(0,500),selected:!!o.selected})),
+      options:(q.options||[]).slice(0,12).map(o=>({label:String(o.label||'').slice(0,8),text:String(o.text||'').slice(0,500),selected:!!o.selected,feedback:String(o.feedback||'').slice(0,16)})),
       openResponse:!!q.openResponse
     }));
     return {title:String(p.title||'Canvas page').slice(0,300),url:String(p.url||location.href).slice(0,1500),context:String(p.context||'').slice(0,8000),items,meta:{...(p.meta||{}),bridge:'mobile-same-tab'}};
@@ -223,14 +260,16 @@
       fallback.textContent='Lens could not isolate a question on this view. Scroll to a visible question and tap Scan.';
       body.appendChild(fallback);return;
     }
-    p.items.forEach((item,idx)=>{
+    const shown=p.items.length>5?[...p.items].sort((a,b)=>(Number(b.inView)-Number(a.inView))||(a.viewportDistance-b.viewportDistance)).slice(0,5):p.items;
+    if(p.items.length>shown.length){meta.textContent=p.items.length+' unique questions detected • showing '+shown.length+' nearest • Inline review'}
+    shown.forEach((item,idx)=>{
       const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:14px;padding:10px;margin:8px 0;background:#0c1119';
-      const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35;font-size:13px';q.textContent=(idx+1)+'. '+item.question.slice(0,500);box.appendChild(q);
+      const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35;font-size:13px';q.textContent=(item.index||idx+1)+'. '+item.question.slice(0,500);box.appendChild(q);
       if(item.options.length){
         const choices=document.createElement('details');choices.style.cssText='margin-top:7px;border:1px solid #20293a;border-radius:10px;padding:7px;background:#0b1119';
         const summary=document.createElement('summary');summary.textContent='Detected choices';summary.style.cssText='cursor:pointer;color:#cbd5e1;font-size:12px;font-weight:700';
         const list=document.createElement('div');list.style.cssText='margin-top:7px;color:#aeb8cb;font-size:12px;line-height:1.45';
-        list.textContent=item.options.map(o=>o.label+'. '+o.text).join('\n');
+        list.textContent=item.options.map(o=>o.label+'. '+o.text+(o.feedback==='correct'?'  ✓ Canvas: correct':o.feedback==='incorrect'?'  ✕ Canvas: incorrect':'')).join('\n');
         choices.append(summary,list);box.appendChild(choices);
       }
       const selected=item.options.filter(o=>o.selected);

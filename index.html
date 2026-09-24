@@ -368,11 +368,11 @@ input[type="range"]{padding:0;background:transparent;border:0}
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v4.0.0 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v4.1.0 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
-const APP_VERSION='4.0.0';
+const APP_VERSION='4.1.0';
 const STORE='provenance-standalone-projects-v1';
 const CURRENT='provenance-standalone-current-v1';
 let rewriteBuffer='';
@@ -898,11 +898,89 @@ function removeFiltered(){
   $('draft').value=cleanupCommon(t).replace(/PVURLTOKEN(\d+)END/g,(_,i)=>urls[+i]);onDraftChange();$('filterResult').textContent='Selected terms removed. Links preserved.'
 }
 const CANVAS_LENS_URL='https://hollowaywalter6-droid.github.io/-provenance-studio/';
-function canvasBookmarklet(){
-  const app='https://hollowaywalter6-droid.github.io/-provenance-studio/';
-  const code=`(()=>{const A='${app}',n=s=>String(s||'').replace(/\\s+/g,' ').trim(),V=e=>{if(!e)return false;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'},L=(x,root)=>{const a=x.getAttribute&&x.getAttribute('aria-label');if(a)return n(a);const by=x.getAttribute&&x.getAttribute('aria-labelledby');if(by){const t=by.split(/\\s+/).map(id=>document.getElementById(id)).filter(Boolean).map(z=>z.innerText||z.textContent).join(' ');if(n(t))return n(t)}if(x.id){try{const l=document.querySelector('label[for="'+CSS.escape(x.id)+'"]');if(l&&n(l.innerText))return n(l.innerText)}catch(e){}}const lab=x.closest&&x.closest('label');if(lab&&n(lab.innerText))return n(lab.innerText);const sels=['[data-testid*="answer"]','[data-testid*="choice"]','[class*="answer"]','[class*="choice"]','[class*="label"]'];for(const s of sels){const z=x.closest&&x.closest(s);if(z&&z!==root){const t=n(z.innerText);if(t&&t!==n(root.innerText)&&t.length<1200)return t}}let z=x.parentElement,b='';for(let k=0;z&&z!==root&&k<4;k++,z=z.parentElement){const t=n(z.innerText);if(t&&t!==n(root.innerText)&&t.length<1200&&(!b||t.length<b.length))b=t}return b||n(x.innerText)},R=[...document.querySelectorAll('.question,.quiz_question,[data-question-id],.question_holder')].filter(V),F=R.length?R:[...document.querySelectorAll('fieldset,[role="group"][aria-labelledby],[data-testid*="question-container"],[data-testid*="question-item"],[data-testid^="question-"]')].filter(e=>V(e)&&e.querySelector('input,textarea,select,[role="radio"],[role="checkbox"],[contenteditable="true"]')),P=[...new Set(F)].slice(0,20).map((e,i)=>{let q='';for(const s of ['.question_text','.question_name','legend','[data-testid*="question-text"]','[data-testid*="prompt"]','h1','h2','h3','h4']){const z=e.querySelector(s);if(z&&n(z.innerText).length>3){q=n(z.innerText);break}}if(!q)q=n(e.innerText).slice(0,900);const o=[...e.querySelectorAll('input[type="radio"],input[type="checkbox"],[role="radio"],[role="checkbox"]')].filter(V).slice(0,12).map((x,j)=>({label:String.fromCharCode(65+j),text:L(x,e).slice(0,500),selected:!!x.checked||x.getAttribute('aria-checked')==='true'})).filter(x=>x.text);return{index:i+1,question:(q||('Question '+(i+1))).slice(0,900),options:o,openResponse:!!e.querySelector('textarea,input[type="text"],input[type="number"],select,[contenteditable="true"]')}});let C=n(document.body.innerText);F.forEach(e=>{const t=n(e.innerText);if(t)C=C.replace(t,' ')});C=n(C).slice(0,8000);const p={title:document.title.slice(0,300),url:location.href.slice(0,1500),context:C,items:P.length?P:[{index:1,question:n(document.body.innerText).slice(0,4000),options:[],openResponse:true}],meta:{frame:top===self?'top':'embedded',capturedAt:new Date().toISOString(),bridge:'iphone-bookmarklet'}};const I='provenance-iphone-lens',T=s=>(n(s).toLowerCase().match(/[a-z0-9']+/g)||[]).filter(x=>x.length>2&&!['the','and','for','with','that','this','what','which','are','was','were','from','into','does','not'].includes(x)),O=(a,b)=>{const X=new Set(T(a)),Y=new Set(T(b));if(!X.size||!Y.size)return 0;let h=0;X.forEach(x=>{if(Y.has(x))h++});return h/Math.max(1,Math.min(X.size,Y.size))},S=C.split(/(?<=[.!?])\\s+/).filter(Boolean),G=it=>{if(!it.options.length)return null;const r=it.options.map(o=>{let s=0,e='';S.forEach(x=>{const v=O(o.text,x)*.65+O(it.question,x)*.35;if(v>s){s=v;e=x}});return{...o,s,e}}).sort((a,b)=>b.s-a.s),b=r[0],d=r[1];return b&&b.s>=.25&&(!d||b.s-d.s>=.08)?b:null};let root=document.getElementById(I);if(root)root.remove();root=document.createElement('div');root.id=I;root.setAttribute('data-provenance-lens','true');root.style.cssText='position:fixed;right:10px;bottom:10px;width:min(390px,calc(100vw - 20px));max-height:72vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.5);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto';const head=document.createElement('div');head.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#171d2a;border-bottom:1px solid #2a3244';const title=document.createElement('strong');title.textContent='Canvas Lens';const ctr=document.createElement('div'),side=document.createElement('button'),min=document.createElement('button'),close=document.createElement('button');side.textContent='↔';min.textContent='−';close.textContent='×';[side,min,close].forEach(b=>b.style.cssText='margin-left:5px;border:1px solid #3a455e;border-radius:9px;background:#222b3e;color:#fff;padding:6px 8px;font-weight:700');ctr.append(side,min,close);head.append(title,ctr);const B=document.createElement('div');B.style.cssText='padding:10px;overflow:auto;max-height:calc(72vh - 48px)';const meta=document.createElement('div');meta.style.cssText='font-size:11px;color:#aeb8cb;margin-bottom:8px';meta.textContent='Inline review • '+p.items.length+' question'+(p.items.length===1?'':'s')+' • tap bookmark again to rescan';B.appendChild(meta);p.items.forEach((it,i)=>{const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:14px;padding:10px;margin:8px 0;background:#0c1119';const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35';q.textContent=(i+1)+'. '+it.question.slice(0,500);const a=document.createElement('div');a.style.cssText='margin-top:8px;padding:9px;border-radius:10px;background:#141c29';const tag=document.createElement('div');tag.style.cssText='font-size:11px;color:#63e6be;font-weight:800;text-transform:uppercase';tag.textContent='Lens review';const ans=document.createElement('div');ans.style.cssText='margin-top:5px;font-weight:800';const best=G(it),sel=it.options.filter(o=>o.selected);ans.textContent=best?'Best-supported choice: '+best.label+' — '+best.text:(it.options.length?'No single choice is supported clearly enough by visible page context.':'Open-response item detected.');a.append(tag,ans);if(sel.length){const cur=document.createElement('div');cur.style.cssText='margin-top:6px;color:#d8e1f1;font-size:12px';cur.textContent='Currently selected: '+sel.map(o=>o.label+' — '+o.text).join(', ');a.appendChild(cur)};if(best&&best.e){const det=document.createElement('details'),sum=document.createElement('summary'),ev=document.createElement('div');sum.textContent='Evidence';ev.style.cssText='margin-top:6px;color:#aeb8cb;font-size:12px';ev.textContent=best.e;det.append(sum,ev);a.appendChild(det)}box.append(q,a);B.appendChild(box)});if(!p.items.length){const z=document.createElement('div');z.textContent='No question detected. Scroll to a visible question and tap the bookmark again.';B.appendChild(z)}root.append(head,B);document.documentElement.appendChild(root);let col=false,left=false;side.onclick=()=>{left=!left;root.style.right=left?'auto':'10px';root.style.left=left?'10px':'auto'};min.onclick=()=>{col=!col;B.style.display=col?'none':'block';root.style.width=col?'145px':'min(390px,calc(100vw - 20px))';min.textContent=col?'+':'−'};close.onclick=()=>root.remove();root.addEventListener('click',e=>e.stopPropagation());root.addEventListener('pointerdown',e=>e.stopPropagation());root.addEventListener('mouseenter',()=>{if(col){B.style.display='block';root.style.width='min(390px,calc(100vw - 20px))'}});root.addEventListener('mouseleave',()=>{if(col){B.style.display='none';root.style.width='145px'}})})()`;
-  return 'javascript:'+code;
+function iphoneCanvasLensRuntime(){
+  const ID='provenance-iphone-lens',norm=s=>String(s||'').replace(/\s+/g,' ').trim();
+  const visible=e=>{if(!e)return false;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
+  const words=s=>(norm(s).toLowerCase().match(/[a-z0-9']+/g)||[]).filter(x=>x.length>2&&!['the','and','for','with','that','this','what','which','are','was','were','from','into','does','not','your','you','how','why','who'].includes(x));
+  const overlap=(a,b)=>{const A=new Set(words(a)),B=new Set(words(b));if(!A.size||!B.size)return 0;let h=0;A.forEach(x=>{if(B.has(x))h++});return h/Math.max(1,Math.min(A.size,B.size))};
+  const old=document.getElementById(ID);if(old)old.remove();
+  if(window.__provenanceIphoneLensCleanup)try{window.__provenanceIphoneLensCleanup()}catch(_){}
+  function labelText(input,root){
+    const aria=input.getAttribute&&input.getAttribute('aria-label');if(aria)return norm(aria);
+    const by=input.getAttribute&&input.getAttribute('aria-labelledby');
+    if(by){const t=by.split(/\s+/).map(id=>document.getElementById(id)).filter(Boolean).map(z=>z.innerText||z.textContent).join(' ');if(norm(t))return norm(t)}
+    if(input.id){try{const l=document.querySelector('label[for="'+CSS.escape(input.id)+'"]');if(l&&norm(l.innerText))return norm(l.innerText)}catch(_){}}
+    const lab=input.closest&&input.closest('label');if(lab&&norm(lab.innerText))return norm(lab.innerText);
+    let z=input.parentElement,b='';for(let k=0;z&&z!==root&&k<5;k++,z=z.parentElement){const t=norm(z.innerText);if(t&&t!==norm(root.innerText)&&t.length<1200&&(!b||t.length<b.length))b=t}
+    return b||norm(input.innerText)
+  }
+  function feedback(input,root){
+    let node=input,depth=0,s='';
+    while(node&&node!==root&&depth<5){s+=' '+(typeof node.className==='string'?node.className:'')+' '+(node.getAttribute?.('aria-label')||'')+' '+(node.getAttribute?.('title')||'')+' '+(node.getAttribute?.('data-testid')||'');node=node.parentElement;depth++}
+    s=s.toLowerCase();
+    if(/incorrect|wrong|answer[_-]?incorrect|marked[_-]?incorrect/.test(s))return 'incorrect';
+    if(/correct[_-]?answer|answer[_-]?correct|\bcorrect\b|marked[_-]?correct/.test(s))return 'correct';
+    return ''
+  }
+  function roots(){
+    const selectors=['.question','.quiz_question','.display_question','.ic-Question','[data-question-id]','.question_holder','fieldset','[data-testid*="question-container"]','[data-testid*="question-item"]','[data-testid^="question-"]','[role="group"][aria-labelledby]'];
+    const all=[...new Set(selectors.flatMap(s=>[...document.querySelectorAll(s)]))].filter(e=>visible(e)&&e.querySelector('input,textarea,select,[role="radio"],[role="checkbox"],[contenteditable="true"]')&&e.id!==ID&&!e.closest('#'+ID));
+    return all
+  }
+  function questionText(el,i){
+    for(const s of ['.question_text','[data-testid*="question-text"]','[data-testid*="prompt"]','legend','.question_name','h1','h2','h3','h4']){const z=el.querySelector(s);if(z&&norm(z.innerText).length>3)return norm(z.innerText).slice(0,1200)}
+    const clone=el.cloneNode(true);clone.querySelectorAll('input,button,select,textarea,script,style,[role="radio"],[role="checkbox"]').forEach(n=>n.remove());
+    return (norm(clone.innerText)||('Question '+(i+1))).slice(0,1200)
+  }
+  function parse(el,i){
+    const options=[],controls=[...el.querySelectorAll('input[type="radio"],input[type="checkbox"],[role="radio"],[role="checkbox"]')].filter(visible);
+    controls.forEach(x=>{const text=labelText(x,el);if(text&&!options.some(o=>o.text===text))options.push({label:String.fromCharCode(65+options.length),text:text.slice(0,500),selected:!!x.checked||x.getAttribute('aria-checked')==='true',feedback:feedback(x,el)})});
+    const r=el.getBoundingClientRect(),vh=Math.max(1,innerHeight||document.documentElement.clientHeight||1);
+    return {el,index:i+1,question:questionText(el,i),options,inView:r.bottom>0&&r.top<vh,distance:Math.round(Math.abs((r.top+r.bottom)/2-vh/2))}
+  }
+  function unique(){
+    const seen=new Map(),arr=[];
+    roots().forEach((el,i)=>{
+      const x=parse(el,i),sig=norm(x.question).toLowerCase()+'||'+x.options.map(o=>norm(o.text).toLowerCase()).join('|');
+      if(!x.question||x.question.length<3)return;
+      const p=seen.get(sig);
+      if(!p){seen.set(sig,x);arr.push(x)}else if(x.distance<p.distance){Object.assign(p,x)}
+    });
+    arr.sort((a,b)=>a.el.compareDocumentPosition(b.el)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);arr.forEach((x,i)=>x.index=i+1);return arr
+  }
+  function context(items){
+    let text=norm(document.body.innerText);
+    items.forEach(x=>{const t=norm(x.el.innerText);if(t&&t.length<7000)text=text.replace(t,' ')});
+    return norm(text).slice(0,14000)
+  }
+  function response(item,ctx,notes){
+    const confirmed=item.options.find(o=>o.feedback==='correct'),wrong=item.options.find(o=>o.feedback==='incorrect'&&o.selected);
+    if(confirmed)return {headline:'Canvas feedback identifies: '+confirmed.label+' — '+confirmed.text,detail:'Canvas marks this choice as correct on the current page.',evidence:''};
+    if(wrong)return {headline:'Canvas feedback: '+wrong.label+' — '+wrong.text+' is marked incorrect.',detail:'The page does not expose a confirmed correct choice, so Lens will not guess.',evidence:''};
+    if(!item.options.length)return {headline:'Open-response item detected.',detail:'Use Review notes to add source material for this prompt.',evidence:''};
+    const sentences=(ctx+' '+notes).split(/(?<=[.!?])\s+/).map(norm).filter(s=>s.length>18&&s.length<700);
+    const ranked=item.options.map(o=>{let best=0,ev='';sentences.forEach(s=>{const score=overlap(o.text,s)*.65+overlap(item.question,s)*.35;if(score>best){best=score;ev=s}});return{...o,score:best,evidence:ev}}).sort((a,b)=>b.score-a.score);
+    const best=ranked[0],second=ranked[1],clear=best&&best.score>=.25&&(!second||best.score-second.score>=.08);
+    return clear?{headline:'Best-supported by visible evidence: '+best.label+' — '+best.text,detail:'Evidence match only; review the evidence before using it.',evidence:best.evidence}:{headline:'No single choice is supported clearly enough by visible evidence.',detail:'Lens will not guess without supporting evidence.',evidence:''}
+  }
+  let root=document.createElement('div');root.id=ID;root.setAttribute('data-provenance-lens','true');
+  root.style.cssText='position:fixed;right:10px;bottom:10px;width:min(390px,calc(100vw - 20px));max-height:70vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.45);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto';
+  root.innerHTML='<div data-h style="display:flex;align-items:center;justify-content:space-between;padding:9px 10px;background:#171d2a;border-bottom:1px solid #2a3244"><strong>Canvas Lens</strong><div><button data-r aria-label="Rescan Canvas page">↻</button><button data-s aria-label="Move Canvas Lens to other side">↔</button><button data-m aria-label="Minimize Canvas Lens">−</button><button data-x aria-label="Close Canvas Lens">×</button></div></div><div data-b style="padding:9px;overflow:auto;max-height:calc(70vh - 46px)"></div>';
+  root.querySelectorAll('button').forEach(b=>b.style.cssText='margin-left:4px;border:1px solid #3a455e;border-radius:9px;background:#222b3e;color:#fff;padding:6px 8px;font-weight:700');
+  document.documentElement.appendChild(root);
+  const body=root.querySelector('[data-b]');let collapsed=false,left=false,last='',notes='';try{notes=localStorage.getItem('provenance-canvas-lens-notes-v2')||''}catch(_){}
+  function render(){
+    const all=unique(),ctx=context(all),shown=all.length>4?[...all].sort((a,b)=>(Number(b.inView)-Number(a.inView))||(a.distance-b.distance)).slice(0,4):all;
+    const sig=JSON.stringify(shown.map(x=>[x.question,x.options.map(o=>[o.text,o.selected,o.feedback])]))+'|'+notes;if(sig===last)return;last=sig;body.innerHTML='';
+    const meta=document.createElement('div');meta.style.cssText='font-size:11px;color:#aeb8cb;margin-bottom:7px';meta.textContent=all.length?(all.length+' unique question'+(all.length===1?'':'s')+' • showing '+shown.length+' nearest'):'No question detected';body.appendChild(meta);
+    const nd=document.createElement('details');nd.style.cssText='margin-bottom:7px;border:1px solid #263147;border-radius:9px;padding:6px';const ns=document.createElement('summary');ns.textContent='Review notes';ns.style.cssText='cursor:pointer;font-size:12px;font-weight:700';const ta=document.createElement('textarea');ta.value=notes;ta.placeholder='Optional class notes or source material…';ta.style.cssText='box-sizing:border-box;width:100%;min-height:62px;margin-top:6px;background:#0a0f17;color:#fff;border:1px solid #3a455e;border-radius:8px;padding:7px';const ap=document.createElement('button');ap.textContent='Apply notes';ap.style.cssText='margin-top:6px;border:1px solid #3a455e;border-radius:8px;background:#222b3e;color:#fff;padding:6px 8px';ap.onclick=()=>{notes=ta.value.trim();try{localStorage.setItem('provenance-canvas-lens-notes-v2',notes)}catch(_){};last='';render()};nd.append(ns,ta,ap);body.appendChild(nd);
+    shown.forEach((it,j)=>{const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:13px;padding:9px;margin:7px 0;background:#0c1119';const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35';q.textContent=(it.index||j+1)+'. '+it.question.slice(0,450);const ans=response(it,ctx,notes);const a=document.createElement('div');a.style.cssText='margin-top:7px;padding:8px;border-radius:9px;background:#141c29';const tag=document.createElement('div');tag.style.cssText='font-size:10px;color:#63e6be;font-weight:800;text-transform:uppercase';tag.textContent='Lens review';const hd=document.createElement('div');hd.style.cssText='margin-top:4px;font-weight:800';hd.textContent=ans.headline;const dt=document.createElement('div');dt.style.cssText='margin-top:4px;color:#aeb8cb;font-size:12px';dt.textContent=ans.detail;a.append(tag,hd,dt);if(ans.evidence){const ev=document.createElement('details'),sm=document.createElement('summary'),tx=document.createElement('div');sm.textContent='Evidence';tx.style.cssText='margin-top:5px;color:#aeb8cb;font-size:12px';tx.textContent=ans.evidence;ev.append(sm,tx);a.appendChild(ev)}const sel=it.options.filter(o=>o.selected);if(sel.length){const cur=document.createElement('div');cur.style.cssText='margin-top:6px;color:#d8e1f1;font-size:12px';cur.textContent='Currently selected: '+sel.map(o=>o.label+' — '+o.text).join(', ');a.appendChild(cur)}box.append(q,a);body.appendChild(box)});
+  }
+  const onScroll=()=>{clearTimeout(window.__provenanceLensTimer);window.__provenanceLensTimer=setTimeout(()=>{last='';render()},220)};
+  root.querySelector('[data-r]').onclick=()=>{last='';render()};root.querySelector('[data-s]').onclick=()=>{left=!left;root.style.right=left?'auto':'10px';root.style.left=left?'10px':'auto'};root.querySelector('[data-m]').onclick=()=>{collapsed=!collapsed;body.style.display=collapsed?'none':'block';root.style.width=collapsed?'145px':'min(390px,calc(100vw - 20px))';root.querySelector('[data-m]').textContent=collapsed?'+':'−'};root.querySelector('[data-x]').onclick=()=>{window.removeEventListener('scroll',onScroll);root.remove()};
+  root.addEventListener('click',e=>e.stopPropagation());root.addEventListener('pointerdown',e=>e.stopPropagation());window.addEventListener('scroll',onScroll,{passive:true});window.__provenanceIphoneLensCleanup=()=>window.removeEventListener('scroll',onScroll);render()
 }
+function canvasBookmarklet(){return 'javascript:('+iphoneCanvasLensRuntime.toString()+')()'}
 function legacyCopyText(text){
   const ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;left:-9999px;top:0;opacity:.01';
   document.body.appendChild(ta);ta.focus();ta.select();try{ta.setSelectionRange(0,ta.value.length)}catch(_){}
@@ -912,7 +990,7 @@ function legacyCopyText(text){
 function renderCanvasSetup(prefix){
   const el=$('canvasSetup'),code=canvasBookmarklet();el.style.display='block';el.innerHTML='';
   const note=document.createElement('div');note.className='small';note.style.marginBottom='10px';
-  note.textContent=(prefix?prefix+' ':'')+'For iPhone/iPad, open Canvas in Safari. The Lens now stays directly over Canvas as a floating panel, so you do not have to switch back to Provenance.';
+  note.textContent=(prefix?prefix+' ':'')+'For iPhone/iPad, open Canvas in Safari. The Lens now stays directly over Canvas, automatically follows nearby questions while you scroll, removes duplicate question blocks, and reads Canvas feedback when it is available.';
   const steps=document.createElement('div');
   steps.textContent='1. In Safari, bookmark any page and name it “Provenance Lens.”\n2. Edit that bookmark.\n3. Replace its address with the Lens code below.\n4. Open a Canvas page in Safari and tap the Provenance Lens bookmark.\n5. A floating Lens panel stays on the Canvas page. Use −/+ to minimize or expand, × to close, and tap the bookmark again to rescan.';
   const ta=document.createElement('textarea');ta.id='canvasBookmarkletCode';ta.readOnly=true;ta.value=code;ta.style.cssText='margin-top:10px;min-height:125px;font-size:12px;word-break:break-all';
@@ -1314,7 +1392,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && window.isSecureContext) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.0.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.1.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
 }
 </script>
 </body>

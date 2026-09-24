@@ -216,7 +216,7 @@ async function appSuite(browserType,label,contextOptions){
 async function canvasSuite(browserType,label,contextOptions){
   const browser=await browserType.launch({headless:true});
   const context=await browser.newContext(contextOptions);
-  const modes={classic:2,new:2,aria:2,select:2,hidden:2,mixed:6,observed:1,selected:1,long:80};
+  const modes={classic:2,new:2,aria:2,select:2,hidden:2,mixed:6,observed:1,selected:1,nestedfeedback:1,long:80};
   for(const [mode,count] of Object.entries(modes)){
     const page=await context.newPage();
     await page.goto(base+'test/canvas-compat.html?mode='+mode,{waitUntil:'networkidle'});
@@ -224,7 +224,7 @@ async function canvasSuite(browserType,label,contextOptions){
     await page.waitForFunction(expected=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes(expected+' question block'),count);
     const text=await page.locator('#provenance-canvas-lens-v2').innerText();
     ok(label+' Canvas '+mode+' detection',text.includes(count+' question block'),text.split('\n')[0]);
-    const expectedSelected=mode==='selected'?1:0;
+    const expectedSelected=(mode==='selected'||mode==='nestedfeedback')?1:0;
     const selected=await page.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
     ok(label+' Canvas '+mode+' preserves answer controls',selected===expectedSelected,selected+' selected');
     const ctx=await page.evaluate(()=>{const r=document.getElementById('provenance-canvas-lens-v2');return !!r&&r.getBoundingClientRect().width>0&&r.getBoundingClientRect().height>0&&r.innerText.includes('question block')});
@@ -246,6 +246,13 @@ async function canvasSuite(browserType,label,contextOptions){
     if(mode==='selected'){
       const overlayText=await page.locator('#provenance-canvas-lens-v2').innerText();
       ok(label+' Canvas Lens reports current selection',overlayText.includes('Currently selected in Canvas: B — Nature and culture are independent and do not influence each other.'));
+    }
+    if(mode==='nestedfeedback'){
+      const overlayText=await page.locator('#provenance-canvas-lens-v2').innerText();
+      const prompt='What is the relationship between nature and culture in shaping reality?';
+      ok(label+' Canvas nested question deduplicated',overlayText.split(prompt).length-1===1,overlayText);
+      ok(label+' Canvas feedback identifies confirmed answer',overlayText.includes('Canvas feedback identifies: B — Nature limits culture, while culture shapes nature over time.'));
+      ok(label+' Canvas feedback reports selected wrong choice',overlayText.includes('Currently selected in Canvas: A — The distinction between nature and culture is becoming increasingly blurred.'));
     }
     await page.close();
   }
@@ -295,14 +302,18 @@ async function canvasSuite(browserType,label,contextOptions){
   const bookmarklet=await app.evaluate(()=>canvasBookmarklet());
   await app.close();
   const bm=await context.newPage();
-  await bm.goto(base+'test/canvas-compat.html?mode=observed',{waitUntil:'networkidle'});
+  await bm.goto(base+'test/canvas-compat.html?mode=nestedfeedback',{waitUntil:'networkidle'});
   const bmUrl=bm.url(),beforeSelected=await bm.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
   await bm.evaluate(code=>(0,eval)(code.replace(/^javascript:/,'')),bookmarklet);
   await bm.waitForSelector('#provenance-iphone-lens');
-  ok(label+' iPhone bookmarklet renders inline Lens',(await bm.locator('#provenance-iphone-lens').innerText()).includes('Canvas Lens'));
+  const bmText=await bm.locator('#provenance-iphone-lens').innerText();
+  ok(label+' iPhone bookmarklet renders inline Lens',bmText.includes('Canvas Lens'));
+  ok(label+' iPhone bookmarklet deduplicates nested Canvas question',bmText.split('What is the relationship between nature and culture in shaping reality?').length-1===1,bmText);
+  ok(label+' iPhone bookmarklet reads Canvas correct feedback',bmText.includes('Canvas feedback identifies: B — Nature limits culture, while culture shapes nature over time.'));
+  ok(label+' iPhone bookmarklet shows current selected wrong answer',bmText.includes('Currently selected: A — The distinction between nature and culture is becoming increasingly blurred.'));
   ok(label+' iPhone bookmarklet stays on Canvas',bm.url()===bmUrl,bm.url());
-  ok(label+' iPhone bookmarklet does not select answers',(await bm.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count())===beforeSelected);
-  await bm.getByRole('button',{name:'−'}).click();
+  ok(label+' iPhone bookmarklet preserves answer controls',(await bm.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count())===beforeSelected);
+  await bm.getByRole('button',{name:'Minimize Canvas Lens'}).click();
   ok(label+' iPhone Lens minimizes',await bm.locator('#provenance-iphone-lens [data-b]').isHidden());
   await bm.close();
 

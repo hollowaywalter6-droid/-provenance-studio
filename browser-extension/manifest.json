@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Provenance Canvas Lens",
-  "version": "2.0.0",
-  "description": "Provenance Canvas Lens inline review overlay with dynamic Canvas detection, mobile-friendly dock, current-selection awareness, and local review notes.",
+  "version": "2.1.0",
+  "description": "Provenance Canvas Lens with deduplicated Canvas question detection, feedback-aware review, nearby-question focus, selection awareness, and local review notes.",
   "permissions": [],
   "host_permissions": [
     "https://*.instructure.com/*",
