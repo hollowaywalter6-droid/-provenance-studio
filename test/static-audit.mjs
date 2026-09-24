@@ -53,12 +53,15 @@ check('Canvas overlay does not auto-submit',!/(\.submit\(|requestSubmit\(|click\
 check('Canvas app accepts live page bridge',index.includes("window.addEventListener('message'")&&index.includes('handleCanvasPayload'));
 check('iPhone bookmarklet has same-tab capture bridge',index.includes("location.href=u")&&index.includes("bridge:'iphone-bookmarklet'"));
 check('Bookmarklet copy has manual fallback',index.includes('legacyCopyText')&&index.includes('canvasBookmarkletCode'));
+check('Canvas review removes percentage scoring',!index.includes('choice-score')&&!index.includes("note overlap '+o.score+'%"));
+check('Canvas capture builds clean context',index.includes("F.forEach(e=>{const t=n(e.innerText);if(t)C=C.replace(t,' ')}"));
+check('Canvas payload enters review without lossy reparse',index.includes("studyItems=p.items.map(function(item,i)"));
 check('Canvas bookmarklet is inline/CSP resilient',index.includes("return 'javascript:'+code")&&!index.includes("s.src='https://hollowaywalter6-droid.github.io/-provenance-studio/canvas-overlay.js"));
 check('Canvas extension runs in frames',manifest.content_scripts?.[0]?.all_frames===true);
 check('Canvas extension declares Canvas hosts',(manifest.host_permissions||[]).some(x=>x.includes('instructure.com')));
 check('Canvas fixture present',read('test/canvas-fixture.html').includes('data-question-id="1"'));
 check('Live smoke test present',smoke.includes('ALL LIVE SMOKE TESTS PASSED'));
-check('Service worker cache is v3.0.1',sw.includes("provenance-v3-0-1"));
+check('Service worker cache is v3.1.0',sw.includes("provenance-v3-1-0"));
 check('Advanced PDF.js fallback present',index.includes('extractPdfWithPdfJs')&&index.includes('pdfjs-dist@6.3.289'));
 check('Scanned PDF OCR fallback present',index.includes('ocrPdf')&&index.includes('tesseract.js@7.0.0'));
 check('Deployment no longer cancels superseded runs',workflow.includes('cancel-in-progress: false'));

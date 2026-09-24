@@ -18,7 +18,7 @@
     const hit=B.filter(x=>A.has(x)).length;
     return Math.round(hit/Math.max(1,Math.min(A.size,B.length))*100);
   };
-  function labelText(input){
+  function labelText(input,root){
     const aria=input.getAttribute&&input.getAttribute('aria-label');
     if(aria)return norm(aria);
     const by=input.getAttribute&&input.getAttribute('aria-labelledby');
@@ -27,10 +27,22 @@
       if(norm(t))return norm(t);
     }
     if(input.id){
-      try{const lab=document.querySelector('label[for="'+CSS.escape(input.id)+'"]');if(lab)return norm(lab.innerText)}catch(e){}
+      try{const lab=document.querySelector('label[for="'+CSS.escape(input.id)+'"]');if(lab&&norm(lab.innerText))return norm(lab.innerText)}catch(e){}
     }
-    const lab=input.closest&&input.closest('label'); if(lab)return norm(lab.innerText);
-    return norm(input.innerText||(input.parentElement&&input.parentElement.innerText));
+    const lab=input.closest&&input.closest('label'); if(lab&&norm(lab.innerText))return norm(lab.innerText);
+    for(const s of ['[data-testid*="answer"]','[data-testid*="choice"]','[class*="answer"]','[class*="choice"]','[class*="label"]']){
+      const node=input.closest&&input.closest(s);
+      if(node&&node!==root){
+        const t=norm(node.innerText);
+        if(t&&t!==norm(root.innerText)&&t.length<1200)return t;
+      }
+    }
+    let node=input.parentElement,best='';
+    for(let depth=0;node&&node!==root&&depth<4;depth++,node=node.parentElement){
+      const t=norm(node.innerText);
+      if(t&&t!==norm(root.innerText)&&t.length<1200&&(!best||t.length<best.length))best=t;
+    }
+    return best||norm(input.innerText);
   }
   function candidateRoots(){
     const candidates=[];
@@ -80,7 +92,7 @@
     const out=[];
     const choiceControls=[...el.querySelectorAll('input[type="radio"],input[type="checkbox"],[role="radio"],[role="checkbox"]')].filter(visible);
     choiceControls.forEach((input,i)=>{
-      const text=labelText(input);
+      const text=labelText(input,el);
       if(text&&!out.some(o=>o.text===text))out.push({label:String.fromCharCode(65+out.length),text,type:(input.getAttribute('role')||input.type||'choice')});
     });
     [...el.querySelectorAll('select')].filter(visible).forEach(sel=>{
@@ -128,7 +140,7 @@
     if(item.options.length){
       const ranked=item.options.map(o=>({...o,score:optionEvidenceScore(item,o,context)})).sort((x,y)=>y.score-x.score);
       const best=ranked[0],second=ranked[1],clear=best&&best.score>=25&&(!second||best.score-second.score>=5);
-      return {headline:clear?'Top page-context match: '+best.label+' — '+best.text:'No single option is strongly supported by the visible page context.',detail:clear?'Evidence score '+best.score+'%. Review the page context before using it.':'Open the deeper review to inspect the evidence instead of relying on a weak tie.',evidence:ev};
+      return {headline:clear?'Best-supported page-context choice: '+best.label+' — '+best.text:'No single option is strongly supported by the visible page context.',detail:clear?'This choice has the strongest support in the captured page context. Review that context before using it.':'Open the deeper review to inspect the evidence instead of relying on a weak tie.',evidence:ev};
     }
     return {headline:ev.length?'Response notes from this page':'No supporting context found on this page.',detail:ev.length?ev.map(x=>'• '+x.text).join('\n'):'Open the deeper review and add notes or source material.',evidence:ev};
   }

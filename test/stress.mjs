@@ -90,6 +90,7 @@ async function appSuite(browserType,label,contextOptions){
   await page.locator('#canvasNotes').fill('Chlorophyll absorbs light. Photosynthesis produces glucose and oxygen.');
   await page.getByRole('button',{name:'Build review queue'}).click();
   ok(label+' Canvas manual queue',(await page.locator('#studyQueue .study-card').count())===2);
+  ok(label+' Canvas review UI has no percentage scoring',!/%/.test(await page.locator('#studyQueue').innerText()));
   const capped=await page.evaluate(()=>sanitizeCanvasPayload({items:Array.from({length:130},(_,i)=>({question:'Q'+i,options:Array.from({length:30},(_,j)=>({text:'O'+j}))})),context:'x'.repeat(70000)}));
   ok(label+' Canvas payload item cap',capped.items.length===100);
   ok(label+' Canvas payload option cap',capped.items[0].options.length===20);
@@ -196,7 +197,7 @@ async function appSuite(browserType,label,contextOptions){
 async function canvasSuite(browserType,label,contextOptions){
   const browser=await browserType.launch({headless:true});
   const context=await browser.newContext(contextOptions);
-  const modes={classic:2,new:2,aria:2,select:2,hidden:2,mixed:6,long:80};
+  const modes={classic:2,new:2,aria:2,select:2,hidden:2,mixed:6,observed:1,long:80};
   for(const [mode,count] of Object.entries(modes)){
     const page=await context.newPage();
     await page.goto(base+'test/canvas-compat.html?mode='+mode,{waitUntil:'networkidle'});
@@ -213,6 +214,14 @@ async function canvasSuite(browserType,label,contextOptions){
       ok(label+' Canvas Scan button works',(await page.locator('#provenance-canvas-lens-v2').innerText()).includes('2 question blocks'));
       const approve=page.getByRole('button',{name:'Approve'}).first();await approve.click();
       ok(label+' Canvas Approve button works',(await approve.textContent())==='Approved');
+    }
+    if(mode==='observed'){
+      const capture=await page.evaluate(()=>scan());
+      ok(label+' Canvas observed question isolated',capture.payload.items[0].question==='What is the relationship between nature and culture in shaping reality?',capture.payload.items[0].question);
+      ok(label+' Canvas observed options isolated',capture.payload.items[0].options.length===5,capture.payload.items[0].options.map(x=>x.text).join(' | '));
+      ok(label+' Canvas observed first option clean',capture.payload.items[0].options[0].text==='The distinction between nature and culture is becoming increasingly blurred.',capture.payload.items[0].options[0].text);
+      ok(label+' Canvas observed context excludes answer block',!capture.payload.context.includes('Nature and culture are independent and do not influence each other.'),capture.payload.context.slice(0,160));
+      ok(label+' Canvas observed overlay shows no percentages',!/%/.test(await page.locator('#provenance-canvas-lens-v2').innerText()));
     }
     await page.close();
   }

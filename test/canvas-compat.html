@@ -29,6 +29,16 @@ const aria=()=>`
 const selects=()=>`
 <fieldset><legend>Choose the pigment.</legend><select><option disabled selected>Choose</option><option>Chlorophyll</option><option>Hemoglobin</option></select></fieldset>
 <fieldset><legend>Write the freezing point.</legend><input type="text" aria-label="Short response"></fieldset>`;
+const observed=()=>`
+<div class="question" data-question-id="1">
+  <div class="question_name">Question 1 0.8 pts</div>
+  <div class="question_text">What is the relationship between nature and culture in shaping reality?</div>
+  <div class="answer-row"><input id="obs1" type="radio" name="obs"><div class="answer_text">The distinction between nature and culture is becoming increasingly blurred.</div></div>
+  <div class="answer-row"><input id="obs2" type="radio" name="obs"><div class="answer_text">Nature and culture are independent and do not influence each other.</div></div>
+  <div class="answer-row"><input id="obs3" type="radio" name="obs"><div class="answer_text">Nature and culture are two separate realities that do not interact.</div></div>
+  <div class="answer-row"><input id="obs4" type="radio" name="obs"><div class="answer_text">Culture is entirely determined by geographical barriers and weather conditions.</div></div>
+  <div class="answer-row"><input id="obs5" type="radio" name="obs"><div class="answer_text">Nature limits culture, while culture shapes nature over time.</div></div>
+</div>`;
 const mixed=()=>classic()+modern()+selects();
 if(mode==='classic')host.innerHTML=classic();
 if(mode==='new')host.innerHTML=modern();
@@ -36,6 +46,7 @@ if(mode==='aria')host.innerHTML=aria();
 if(mode==='select')host.innerHTML=selects();
 if(mode==='hidden')host.innerHTML=classic()+'<div class="question hidden" data-question-id="99"><div class="question_text">Hidden question</div><input type="radio"></div>';
 if(mode==='mixed')host.innerHTML=mixed();
+if(mode==='observed')host.innerHTML=observed();
 if(mode==='dynamic'){
   host.innerHTML='<div class="question" data-question-id="1"><div class="question_text">Initial dynamic question?</div><label><input type="radio"> Yes</label><label><input type="radio"> No</label></div>';
   setTimeout(()=>{host.insertAdjacentHTML('beforeend','<div class="question" data-question-id="2"><div class="question_text">Loaded later?</div><label><input type="radio"> Yes</label><label><input type="radio"> No</label></div>')},700);

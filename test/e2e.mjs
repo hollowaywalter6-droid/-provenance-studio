@@ -98,7 +98,8 @@ await canvas.waitForSelector('#provenance-canvas-lens-v2');
 await canvas.waitForFunction(()=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes('2 question blocks detected'));
 pass('Canvas Lens detects classic Canvas-style questions',true);
 const demoText=await canvas.locator('#provenance-canvas-lens-v2').innerText();
-pass('Canvas Lens fixture evidence ranking favors Chlorophyll',demoText.includes('Top page-context match: B — Chlorophyll'));
+pass('Canvas Lens fixture evidence ranking favors Chlorophyll',demoText.includes('Best-supported page-context choice: B — Chlorophyll'));
+pass('Canvas Lens overlay shows no percentage scores',!/%/.test(demoText));
 
 await canvas.evaluate(()=>{
   const q=document.createElement('div');q.className='question';q.dataset.questionId='3';
@@ -118,6 +119,7 @@ await popup.waitForLoadState('domcontentloaded');
 await popup.waitForFunction(()=>document.getElementById('canvasBridgeStatus')?.textContent.includes('3 items received'),null,{timeout:10000});
 pass('Canvas live bridge sends page content without copy/paste',true);
 pass('Canvas review queue builds from overlay capture',(await popup.locator('#studyQueue .study-card').count())===3);
+pass('Canvas review queue shows no percentage scores',!/%/.test(await popup.locator('#studyQueue').innerText()));
 await popup.screenshot({path:'test/artifacts/canvas-review-mobile.png',fullPage:true});
 await canvas.screenshot({path:'test/artifacts/canvas-overlay-mobile.png',fullPage:true});
 finishCanvasErrors();
