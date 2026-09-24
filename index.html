@@ -70,6 +70,20 @@ box-shadow:inset -25px -28px 55px rgba(0,0,0,.45),0 0 80px rgba(139,124,255,.35)
 footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
 .runtime-warning{margin:10px 0 0;padding:11px 13px;border-radius:14px;background:#2b1d12;border:1px solid #6b4824;color:#ffd79d;font-size:.8rem}
 .preview{display:none;margin-top:12px;max-width:100%;max-height:240px;border-radius:16px;border:1px solid var(--line);object-fit:contain;background:#090d14}
+.study-card{padding:14px;border-radius:16px;background:#0e141d;border:1px solid var(--line);display:grid;gap:10px}
+.study-card.approved{border-color:#2f7b68;box-shadow:0 0 0 1px rgba(99,230,190,.15) inset}
+.study-q{font-weight:800;line-height:1.4}
+.study-evidence{font-size:.8rem;color:var(--muted);white-space:pre-wrap}
+.choice-grid{display:grid;gap:8px}
+.choice-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:10px;border-radius:12px;background:#0b1119;border:1px solid #20293a}
+.choice-score{font-variant-numeric:tabular-nums;color:var(--accent2);font-size:.78rem}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;background:#111926;border:1px solid var(--line);font-size:.72rem;color:var(--muted)}
+.range-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+input[type="range"]{padding:0;background:transparent;border:0}
+.analysis-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.analysis-mini{padding:12px;border:1px solid var(--line);border-radius:14px;background:#0d121a}
+.analysis-mini b{display:block;font-size:1.1rem}.analysis-mini span{font-size:.72rem;color:var(--muted)}
+@media(max-width:800px){.analysis-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:800px){.hero,.two{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.three{grid-template-columns:1fr}.big{font-size:1.7rem}}
 @media(max-width:480px){.app{padding:12px}.card{padding:14px;border-radius:18px}.brandrow{align-items:flex-start}.status{font-size:.72rem}.grid{grid-template-columns:1fr 1fr}}
 </style>
@@ -113,6 +127,7 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
       <button class="tab" data-tab="analysis" onclick="showTab('analysis')">Analysis</button>
       <button class="tab" data-tab="verify" onclick="showTab('verify')">Verify</button>
       <button class="tab" data-tab="tools" onclick="showTab('tools')">Tools</button>
+      <button class="tab" data-tab="canvas" onclick="showTab('canvas')">Canvas Study</button>
       <button class="tab" data-tab="export" onclick="showTab('export')">Export</button>
       <button class="tab" data-tab="connectors" onclick="showTab('connectors')">Connectors</button>
       <button class="tab" data-tab="diagnostics" onclick="showTab('diagnostics')">Diagnostics</button>
@@ -163,6 +178,10 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
 
     <div class="panel" id="panel-rewrite">
       <p class="small" style="margin-top:0">Humanize rewrites stiff or repetitive phrasing into more natural language while preserving the meaning. It improves style; it does not guarantee any AI-detector result.</p>
+      <div class="two" style="margin-bottom:12px">
+        <div><div class="label">Tone</div><select id="rewriteTone"><option value="natural">Natural</option><option value="academic">Academic</option><option value="professional">Professional</option><option value="direct">Direct</option></select></div>
+        <div><div class="label">Humanize strength</div><div class="range-row"><input id="humanizeStrength" type="range" min="1" max="3" value="2" oninput="updateHumanizeLabel()"><span id="humanizeStrengthLabel" class="badge">Balanced</span></div></div>
+      </div>
       <div class="three">
         <button class="primary" onclick="rewrite('humanize')">Humanize</button>
         <button onclick="rewrite('natural')">Natural</button>
@@ -183,6 +202,13 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
           <div class="kicker">Pattern signal</div>
           <div class="big" id="scoreBig">—</div>
           <div id="bandText" class="small">Run analysis first.</div>
+          <div class="analysis-grid">
+            <div class="analysis-mini"><b id="burstMetric">—</b><span>Sentence variability</span></div>
+            <div class="analysis-mini"><b id="lexicalMetric">—</b><span>Lexical diversity</span></div>
+            <div class="analysis-mini"><b id="repeatMetric">—</b><span>Repeated openings</span></div>
+            <div class="analysis-mini"><b id="markerMetric">—</b><span>Formulaic markers</span></div>
+          </div>
+          <div id="analysisDetail" class="result" style="margin-top:12px;min-height:90px">Run analysis first.</div>
         </div>
         <div class="card" style="box-shadow:none">
           <div class="kicker">Sentence map</div>
@@ -224,6 +250,29 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
           <textarea id="studyQuestion" placeholder="Paste a question or prompt…"></textarea>
           <div class="toolbar"><button onclick="studyAssist()">Break it down</button></div>
           <div id="studyResult" class="result"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-canvas">
+      <div class="two">
+        <div>
+          <div class="kicker">Canvas Study Assist</div>
+          <p class="small">Paste practice questions, homework prompts, or review questions here. The app builds study suggestions from the notes/context you provide and requires you to approve each item one by one. It does not auto-submit answers or invisibly fill a live Canvas quiz.</p>
+          <div class="label">Questions / prompt set</div>
+          <textarea id="canvasQuestions" placeholder="1. Question text&#10;A. Option one&#10;B. Option two&#10;&#10;2. Short-answer prompt..."></textarea>
+          <div class="label" style="margin-top:12px">Your notes / source material</div>
+          <textarea id="canvasNotes" placeholder="Paste class notes, study guide, reading notes, or your own draft here..."></textarea>
+          <div class="toolbar">
+            <button class="primary" onclick="buildStudyQueue()">Build review queue</button>
+            <button onclick="loadDraftAsNotes()">Use current draft as notes</button>
+            <button class="ghost" onclick="clearStudyQueue()">Clear queue</button>
+          </div>
+        </div>
+        <div>
+          <div class="kicker">Approval queue</div>
+          <p class="small">Each suggestion stays local until you approve it. “Approve & copy” copies only that reviewed item so you can decide what, if anything, to enter yourself.</p>
+          <div id="studyQueue" class="list"><div class="small">No questions loaded.</div></div>
         </div>
       </div>
     </div>
@@ -273,7 +322,7 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v2.3 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v2.4 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
@@ -454,17 +503,36 @@ async function handleImage(e){
 
 function analyze(){
   const t=$('draft').value; if(words(t).length<8){alert('Add a little more text first.');return}
-  const ss=sents(t), lens=ss.map(x=>words(x).length), avg=lens.reduce((a,b)=>a+b,0)/lens.length;
-  const sd=Math.sqrt(lens.reduce((a,b)=>a+(b-avg)*(b-avg),0)/lens.length);
+  const ss=sents(t), lens=ss.map(function(x){return words(x).length}), avg=lens.reduce(function(a,b){return a+b},0)/Math.max(1,lens.length);
+  const sd=Math.sqrt(lens.reduce(function(a,b){return a+(b-avg)*(b-avg)},0)/Math.max(1,lens.length));
   const cv=avg?sd/avg:0;
-  const markers=['delve','robust','furthermore','moreover','multifaceted','pivotal','seamless','landscape','in conclusion','it is important to note'];
-  const low=t.toLowerCase(); let hits=markers.reduce((n,m)=>n+(low.includes(m)?1:0),0);
-  const score=Math.max(3,Math.min(97,Math.round(62-(cv*48)+hits*8)));
-  $('signalMetric').textContent=score;
-  $('scoreBig').textContent=score+' / 100';
-  $('bandText').textContent=(score<35?'More varied sentence patterns.':score<65?'Mixed sentence patterns.':'More uniform sentence patterns.')+' This rule-based score cannot determine human or AI authorship.';
+  const tokens=words(t.toLowerCase()), unique=new Set(tokens);
+  const lexical=tokens.length?unique.size/tokens.length:0;
+  const markers=['delve','robust','furthermore','moreover','multifaceted','pivotal','seamless','landscape','in conclusion','it is important to note','notably','underscores','navigate the complexities'];
+  const low=t.toLowerCase();
+  const foundMarkers=markers.filter(function(m){return low.indexOf(m)>=0});
+  const openers=ss.map(function(s){return words(s.toLowerCase()).slice(0,3).join(' ')});
+  const openerCounts={};openers.forEach(function(o){if(o)openerCounts[o]=(openerCounts[o]||0)+1});
+  const repeatedOpeners=Object.values(openerCounts).filter(function(n){return n>1}).reduce(function(a,n){return a+(n-1)},0);
+  const punctuationVar=(t.match(/[;:—()]/g)||[]).length/Math.max(1,ss.length);
+  const uniformity=Math.max(0,Math.min(100,Math.round(70-(cv*52)-(Math.min(1,punctuationVar)*8)+(foundMarkers.length*5)+(repeatedOpeners*3)-(lexical>.62?5:0))));
+  $('signalMetric').textContent=uniformity;
+  $('scoreBig').textContent=uniformity+' / 100';
+  $('bandText').textContent=(uniformity<35?'Highly varied writing patterns.':uniformity<65?'Mixed writing patterns.':'More uniform writing patterns.')+' This is a style-uniformity signal, not proof of AI or human authorship.';
+  $('burstMetric').textContent=Math.round(cv*100)+'%';
+  $('lexicalMetric').textContent=Math.round(lexical*100)+'%';
+  $('repeatMetric').textContent=String(repeatedOpeners);
+  $('markerMetric').textContent=String(foundMarkers.length);
+  const details=[];
+  details.push('Average sentence length: '+avg.toFixed(1)+' words.');
+  details.push('Sentence-length spread: '+sd.toFixed(1)+' words.');
+  details.push('Unique-word ratio: '+Math.round(lexical*100)+'%.');
+  if(foundMarkers.length)details.push('Formulaic phrases found: '+foundMarkers.join(', ')+'.');
+  if(repeatedOpeners)details.push('Repeated sentence openings: '+repeatedOpeners+'.');
+  if(!foundMarkers.length&&!repeatedOpeners)details.push('No strong formulaic phrase pattern was found by the local rules.');
+  $('analysisDetail').textContent=details.join('\n');
   $('sentenceMap').innerHTML='';
-  ss.forEach((s,i)=>{const d=document.createElement('div');d.className='item';d.innerHTML='<strong>Sentence '+(i+1)+'</strong><div class="small">'+words(s).length+' words</div><div>'+esc(s)+'</div>';$('sentenceMap').append(d)});
+  ss.forEach(function(s,i){const d=document.createElement('div');d.className='item';d.innerHTML='<strong>Sentence '+(i+1)+'</strong><div class="small">'+words(s).length+' words</div><div>'+esc(s)+'</div>';$('sentenceMap').append(d)});
   showTab('analysis')
 }
 
@@ -478,8 +546,14 @@ function cleanupCommon(t){
     .replace(/\n{3,}/g,'\n\n')
     .trim()
 }
+function updateHumanizeLabel(){
+  const el=$('humanizeStrengthLabel'),v=Number($('humanizeStrength').value||2);
+  if(el)el.textContent=v===1?'Light':v===3?'Strong':'Balanced'
+}
 function humanizeLocal(t){
   let out=cleanupCommon(t);
+  const strength=Number(($('humanizeStrength')&&$('humanizeStrength').value)||2);
+  const tone=($('rewriteTone')&&$('rewriteTone').value)||'natural';
   const swaps=[
     [/\bIt is important to note that\s*/gi,''],
     [/\bIt should be noted that\s*/gi,''],
@@ -498,15 +572,20 @@ function humanizeLocal(t){
     [/\bcommence\b/gi,'start'],
     [/\bterminate\b/gi,'end']
   ];
-  swaps.forEach(function(pair){out=out.replace(pair[0],pair[1])});
-  out=out
-    .replace(/\bI am\b/g,"I'm")
-    .replace(/\bI have\b/g,"I've")
-    .replace(/\bI will\b/g,"I'll")
-    .replace(/\bdo not\b/gi,"don't")
-    .replace(/\bdoes not\b/gi,"doesn't")
-    .replace(/\bcannot\b/gi,"can't")
-    .replace(/\bwill not\b/gi,"won't");
+  swaps.slice(0,strength===1?8:swaps.length).forEach(function(pair){out=out.replace(pair[0],pair[1])});
+  if(tone!=='academic'){
+    out=out
+      .replace(/\bI am\b/g,"I'm")
+      .replace(/\bI have\b/g,"I've")
+      .replace(/\bI will\b/g,"I'll")
+      .replace(/\bdo not\b/gi,"don't")
+      .replace(/\bdoes not\b/gi,"doesn't")
+      .replace(/\bcannot\b/gi,"can't")
+      .replace(/\bwill not\b/gi,"won't");
+  }
+  if(tone==='professional')out=out.replace(/\ba lot of\b/gi,'many').replace(/\bkind of\b/gi,'somewhat');
+  if(tone==='academic')out=out.replace(/\ba lot of\b/gi,'many').replace(/\bget\b/gi,'obtain').replace(/\bshow\b/gi,'demonstrate');
+  if(tone==='direct')out=out.replace(/\bI think that\s*/gi,'').replace(/\bIn my opinion,?\s*/gi,'');
 
   const ss=sents(out);
   const rebuilt=[];
@@ -573,6 +652,114 @@ function removeFiltered(){
   filterTerms().forEach(term=>{t=t.replace(new RegExp('\\b'+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','gi'),'')});
   $('draft').value=cleanupCommon(t).replace(/PVURLTOKEN(\d+)END/g,(_,i)=>urls[+i]);onDraftChange();$('filterResult').textContent='Selected terms removed. Links preserved.'
 }
+let studyItems=[];
+function tokenizeStudy(s){
+  const stop=new Set(['the','a','an','and','or','but','of','to','in','on','for','is','are','was','were','be','with','that','this','it','as','by','from','at','which','what','why','how','when','where','who']);
+  return words(String(s||'').toLowerCase()).map(function(x){return x.replace(/['’]/g,'')}).filter(function(x){return x.length>2&&!stop.has(x)})
+}
+function splitStudyQuestions(raw){
+  const text=String(raw||'').replace(/\r/g,'').trim(); if(!text)return[];
+  const lines=text.split('\n');
+  const blocks=[];let cur=[];
+  function flush(){if(cur.length){blocks.push(cur.join('\n').trim());cur=[]}}
+  lines.forEach(function(line){
+    const start=/^\s*(?:Q(?:uestion)?\s*)?\d+[.)\-:]\s+/.test(line);
+    if(start&&cur.length)flush();
+    if(line.trim()===''&&cur.length&&cur.some(function(x){return /^[A-H][.)\-:]\s+/.test(x.trim())})){flush();return}
+    if(line.trim()!=='')cur.push(line);
+  });flush();
+  if(blocks.length===1&&text.split(/\n\s*\n/).length>1)return text.split(/\n\s*\n/).map(function(x){return x.trim()}).filter(Boolean);
+  return blocks;
+}
+function parseStudyBlock(block,index){
+  const lines=block.split('\n').map(function(x){return x.trim()}).filter(Boolean);
+  let q=lines.shift()||('Question '+(index+1));
+  q=q.replace(/^\s*(?:Q(?:uestion)?\s*)?\d+[.)\-:]\s*/i,'');
+  const options=[];
+  const remain=[];
+  lines.forEach(function(line){
+    const m=line.match(/^([A-H])[.)\-:]\s*(.+)$/i);
+    if(m)options.push({label:m[1].toUpperCase(),text:m[2]});else remain.push(line);
+  });
+  if(remain.length)q+=' '+remain.join(' ');
+  return {id:'study-'+Date.now()+'-'+index,question:q,options:options,approved:false};
+}
+function noteSentences(){
+  return sents($('canvasNotes').value||'').filter(function(x){return words(x).length>3})
+}
+function overlapScore(a,b){
+  const A=new Set(tokenizeStudy(a)), B=tokenizeStudy(b); if(!A.size||!B.length)return 0;
+  const hit=B.filter(function(x){return A.has(x)}).length;
+  return Math.round((hit/Math.max(1,Math.min(A.size,B.length)))*100)
+}
+function evidenceFor(question,limit){
+  const notes=noteSentences();
+  return notes.map(function(s){return {text:s,score:overlapScore(question,s)}})
+    .sort(function(a,b){return b.score-a.score})
+    .filter(function(x){return x.score>0})
+    .slice(0,limit||3)
+}
+function makeStudySuggestion(item){
+  const evidence=evidenceFor(item.question,3);
+  if(item.options.length){
+    const optionRows=item.options.map(function(o){
+      const context=[item.question].concat(evidence.map(function(e){return e.text})).join(' ');
+      return {label:o.label,text:o.text,score:overlapScore(o.text,context)}
+    });
+    return {type:'choices',evidence:evidence,options:optionRows};
+  }
+  if(!evidence.length)return {type:'open',draft:'Add notes or source material so the app can build a supported response outline.',evidence:[]};
+  const top=evidence.map(function(e){return e.text.replace(/\s+/g,' ').trim()}).slice(0,2);
+  const draft='Response outline: '+top.join(' ');
+  return {type:'open',draft:draft,evidence:evidence};
+}
+function buildStudyQueue(){
+  const blocks=splitStudyQuestions($('canvasQuestions').value);
+  studyItems=blocks.map(parseStudyBlock);
+  if(!studyItems.length){$('studyQueue').innerHTML='<div class="small">Add at least one question first.</div>';return}
+  renderStudyQueue();
+  showTab('canvas');
+  notice(studyItems.length+' study item'+(studyItems.length===1?'':'s')+' ready for one-by-one review.')
+}
+function renderStudyQueue(){
+  const out=$('studyQueue');out.innerHTML='';
+  if(!studyItems.length){out.innerHTML='<div class="small">No questions loaded.</div>';return}
+  studyItems.forEach(function(item,idx){
+    const sug=makeStudySuggestion(item);
+    const card=document.createElement('div');card.className='study-card'+(item.approved?' approved':'');
+    const q=document.createElement('div');q.className='study-q';q.textContent=(idx+1)+'. '+item.question;card.appendChild(q);
+    if(sug.type==='choices'){
+      const hint=document.createElement('div');hint.className='small';hint.textContent='Evidence comparison from your notes (higher score = more wording/topic overlap; this does not certify a correct answer):';card.appendChild(hint);
+      const grid=document.createElement('div');grid.className='choice-grid';
+      sug.options.forEach(function(o){
+        const row=document.createElement('div');row.className='choice-row';
+        row.innerHTML='<strong>'+esc(o.label)+'</strong><span>'+esc(o.text)+'</span><span class="choice-score">'+o.score+'%</span>';
+        grid.appendChild(row);
+      });card.appendChild(grid);
+    }else{
+      const r=document.createElement('div');r.className='result';r.style.minHeight='80px';r.textContent=sug.draft;card.appendChild(r);
+    }
+    const ev=document.createElement('div');ev.className='study-evidence';
+    ev.textContent=sug.evidence.length?'Supporting note matches:\n'+sug.evidence.map(function(e){return '• '+e.text}).join('\n'):'No matching notes found yet.';
+    card.appendChild(ev);
+    const bar=document.createElement('div');bar.className='toolbar';
+    const approve=document.createElement('button');approve.className='primary';approve.textContent=item.approved?'Approved':'Approve & copy';
+    approve.onclick=function(){approveStudyItem(item.id,sug)};
+    const review=document.createElement('button');review.className='ghost';review.textContent='Needs review';review.onclick=function(){item.approved=false;renderStudyQueue()};
+    bar.append(approve,review);card.appendChild(bar);out.appendChild(card);
+  })
+}
+async function approveStudyItem(id,sug){
+  const item=studyItems.find(function(x){return x.id===id});if(!item)return;
+  let text='';
+  if(sug.type==='open')text=sug.draft;
+  else text='Question: '+item.question+'\n'+sug.options.map(function(o){return o.label+'. '+o.text+' — note overlap '+o.score+'%'}).join('\n');
+  item.approved=true;
+  try{await navigator.clipboard.writeText(text);notice('Approved and copied. Review it before entering anything elsewhere.')}catch(e){notice('Approved. Clipboard access was unavailable; select the text manually.')}
+  renderStudyQueue()
+}
+function clearStudyQueue(){studyItems=[];$('studyQueue').innerHTML='<div class="small">No questions loaded.</div>';notice('Study queue cleared.')}
+function loadDraftAsNotes(){$('canvasNotes').value=$('draft').value;notice('Current draft loaded as study notes.')}
 function studyAssist(){
   const q=$('studyQuestion').value.trim();if(!q){$('studyResult').textContent='Add a question first.';return}
   $('studyResult').textContent='Local Study Assist\n\n1. What is the prompt asking you to do?\n'+q+'\n\n2. Identify the key terms or evidence you already have.\n3. Write your own answer in one sentence.\n4. Add supporting detail.\n5. Check whether every part of the prompt was answered.\n\nCloud AI is optional for deeper explanations; this local mode does not submit quizzes or graded work.'
@@ -663,6 +850,10 @@ function runSelfTest(){
   t('Claim checker',()=>typeof checkClaims==='function');
   t('Word filter',()=>typeof findFiltered==='function'&&typeof removeFiltered==='function');
   t('Study Assist',()=>typeof studyAssist==='function');
+  t('Canvas Study parser',()=>typeof splitStudyQuestions==='function'&&parseStudyBlock('1. Example question\nA. One\nB. Two',0).options.length===2);
+  t('Canvas approval gate',()=>typeof approveStudyItem==='function'&&Array.isArray(studyItems));
+  t('Humanize controls',()=>!!$('rewriteTone')&&!!$('humanizeStrength')&&typeof humanizeLocal==='function');
+  t('Advanced writing signals',()=>!!$('burstMetric')&&!!$('lexicalMetric')&&!!$('analysisDetail'));
   t('TXT/MD/JSON/CSV export',()=>typeof blobDownload==='function'&&typeof downloadJSON==='function'&&typeof downloadCSV==='function');
   t('XLSX export engine',()=>typeof makeXLSX==='function'&&makeXLSX().length>500);
   t('Native file/share bridge',()=>typeof openNativeFilePicker==='function'&&typeof shareProjectFile==='function');
@@ -675,7 +866,7 @@ function interactiveBoot(){
   try{
     loadCurrent();
     const w=$('runtimeWarning');if(w)w.style.display='none';
-    notice('Ready • Version 2.3 • Local tools available.');
+    notice('Ready • Version 2.4 • Local tools available.');updateHumanizeLabel();
   }catch(err){
     const w=$('runtimeWarning');
     if(w){w.style.display='block';w.textContent='Startup recovered with an error: '+((err&&err.message)||err)+'. Reload once, then run health checks.'}
@@ -688,7 +879,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.3',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.4',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
 }
 </script>
 </body>
