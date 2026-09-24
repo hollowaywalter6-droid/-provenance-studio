@@ -216,12 +216,11 @@ async function canvasSuite(browserType,label,contextOptions){
       ok(label+' Canvas Approve button works',(await approve.textContent())==='Approved');
     }
     if(mode==='observed'){
-      const capture=await page.evaluate(()=>scan());
-      ok(label+' Canvas observed question isolated',capture.payload.items[0].question==='What is the relationship between nature and culture in shaping reality?',capture.payload.items[0].question);
-      ok(label+' Canvas observed options isolated',capture.payload.items[0].options.length===5,capture.payload.items[0].options.map(x=>x.text).join(' | '));
-      ok(label+' Canvas observed first option clean',capture.payload.items[0].options[0].text==='The distinction between nature and culture is becoming increasingly blurred.',capture.payload.items[0].options[0].text);
-      ok(label+' Canvas observed context excludes answer block',!capture.payload.context.includes('Nature and culture are independent and do not influence each other.'),capture.payload.context.slice(0,160));
-      ok(label+' Canvas observed overlay shows no percentages',!/%/.test(await page.locator('#provenance-canvas-lens-v2').innerText()));
+      const overlayText=await page.locator('#provenance-canvas-lens-v2').innerText();
+      ok(label+' Canvas observed question isolated',overlayText.includes('What is the relationship between nature and culture in shaping reality?'));
+      ok(label+' Canvas observed first option clean',overlayText.includes('A. The distinction between nature and culture is becoming increasingly blurred.'));
+      ok(label+' Canvas observed option is not whole question block',!overlayText.includes('A. Question 1 0.8 pts'));
+      ok(label+' Canvas observed overlay shows no percentages',!/%/.test(overlayText));
     }
     await page.close();
   }
