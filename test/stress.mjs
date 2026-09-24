@@ -123,6 +123,7 @@ async function appSuite(browserType,label,contextOptions){
   await page.waitForFunction(()=>document.getElementById('imagePreview').style.display==='block');
   ok(label+' image preview',true);
 
+  await page.locator('.tab[data-tab="draft"]').click();
   await page.locator('#draft').fill('Export sentence one. Export sentence two has more words.');
   await page.locator('.tab[data-tab="export"]').click();
   for(const name of ['Download TXT','Download Markdown','Download JSON','Download CSV','Download XLSX']){
