@@ -260,8 +260,8 @@
       fallback.textContent='Lens could not isolate a question on this view. Scroll to a visible question and tap Scan.';
       body.appendChild(fallback);return;
     }
-    const shown=p.items.length>5?[...p.items].sort((a,b)=>(Number(b.inView)-Number(a.inView))||(a.viewportDistance-b.viewportDistance)).slice(0,5):p.items;
-    if(p.items.length>shown.length){meta.textContent=p.items.length+' unique questions detected • showing '+shown.length+' nearest • Inline review'}
+    const shown=p.items.slice(0,100);
+    meta.textContent=p.items.length+' unique question'+(p.items.length===1?'':'s')+' • '+(p.items.length>100?'first 100 listed':'all listed')+' • Inline review';
     shown.forEach((item,idx)=>{
       const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:14px;padding:10px;margin:8px 0;background:#0c1119';
       const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35;font-size:13px';q.textContent=(item.index||idx+1)+'. '+item.question.slice(0,500);box.appendChild(q);
@@ -271,12 +271,6 @@
         const list=document.createElement('div');list.style.cssText='margin-top:7px;color:#aeb8cb;font-size:12px;line-height:1.45';
         list.textContent=item.options.map(o=>o.label+'. '+o.text+(o.feedback==='correct'?'  ✓ Canvas: correct':o.feedback==='incorrect'?'  ✕ Canvas: incorrect':'')).join('\n');
         choices.append(summary,list);box.appendChild(choices);
-      }
-      const selected=item.options.filter(o=>o.selected);
-      if(selected.length){
-        const current=document.createElement('div');current.style.cssText='margin-top:7px;padding:7px 8px;border-radius:9px;background:#182132;color:#d8e1f1;font-size:12px';
-        current.textContent='Currently selected in Canvas: '+selected.map(o=>o.label+' — '+o.text).join(', ');
-        box.appendChild(current);
       }
       const response=localResponse(item,(p.context+'\n'+lensNotes).trim());
       const answer=document.createElement('div');answer.style.cssText='margin-top:8px;padding:9px;border-radius:10px;background:#141c29;line-height:1.4';
