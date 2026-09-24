@@ -53,8 +53,9 @@ async function appSuite(browserType,label,contextOptions){
   await page.getByRole('button',{name:'Check claims'}).click();
   ok(label+' claim checker',((await page.locator('#claimResult').textContent())||'').includes('Claims worth checking'));
 
-  await page.locator('.tab[data-tab="tools"]').click();
+  await page.locator('.tab[data-tab="draft"]').click();
   await page.locator('#draft').fill('Robust writing stays here. https://example.com/robust-link Furthermore, more text.');
+  await page.locator('.tab[data-tab="tools"]').click();
   await page.locator('#wordFilter').fill('robust, furthermore');
   await page.getByRole('button',{name:'Find words'}).click();
   ok(label+' word filter find',((await page.locator('#filterResult').textContent())||'').toLowerCase().includes('robust'));
@@ -169,7 +170,7 @@ async function canvasSuite(browserType,label,contextOptions){
     ok(label+' Canvas '+mode+' detection',text.includes(count+' question block'),text.split('\n')[0]);
     const selected=await page.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
     ok(label+' Canvas '+mode+' no auto-selection',selected===0,selected+' selected');
-    const ctx=await page.evaluate(()=>{const r=document.getElementById('provenance-canvas-lens-v2');return r?document.body.innerText.includes('Response builder'):false});
+    const ctx=await page.evaluate(()=>{const r=document.getElementById('provenance-canvas-lens-v2');return !!r&&r.getBoundingClientRect().width>0&&r.getBoundingClientRect().height>0&&r.innerText.includes('Response builder')});
     ok(label+' Canvas '+mode+' overlay visible',ctx);
     await page.close();
   }
