@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Provenance Canvas Lens",
+  "version": "1.0.0",
+  "description": "Reads visible Canvas page content and opens an on-page Provenance study/response overlay. It never auto-submits assessments.",
+  "permissions": [],
+  "host_permissions": [
+    "https://*.instructure.com/*",
+    "https://canvas.sdsu.edu/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.instructure.com/*",
+        "https://canvas.sdsu.edu/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
