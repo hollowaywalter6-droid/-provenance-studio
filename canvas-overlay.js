@@ -230,6 +230,21 @@
     toggle.setAttribute('aria-label',expanded?'Minimize Canvas Lens':'Expand Canvas Lens');
     if(!temporary)collapsed=!expanded;
   }
+  function locateQuestion(item){
+    const sig=questionSignature(item),pair=uniqueQuestions(candidateRoots()).find(p=>questionSignature(p.item)===sig);
+    if(!pair||!pair.el)return false;
+    const el=pair.el,old=el.style.outline,off=el.style.outlineOffset;
+    el.scrollIntoView({behavior:'smooth',block:'center'});el.style.outline='3px solid #63e6be';el.style.outlineOffset='4px';
+    setTimeout(()=>{el.style.outline=old;el.style.outlineOffset=off},1500);return true
+  }
+  async function copyCue(text){
+    let ok=false;try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);ok=true}}catch(_){}
+    if(!ok){const ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;left:-9999px;top:0';document.body.appendChild(ta);ta.select();try{ok=!!document.execCommand('copy')}catch(_){}ta.remove()}return ok
+  }
+  function quickButton(text,label){
+    const b=document.createElement('button');b.type='button';b.textContent=text;b.setAttribute('aria-label',label||text);
+    b.style.cssText='border:1px solid #3a455e;border-radius:9px;background:#1d2637;color:#fff;padding:6px 8px;font-size:11px;font-weight:800;touch-action:manipulation';return b
+  }
   function evidenceDetails(response){
     const details=document.createElement('details');details.style.cssText='margin-top:8px;border-top:1px solid #263147;padding-top:7px';
     const summary=document.createElement('summary');summary.textContent='Evidence';summary.style.cssText='cursor:pointer;color:#cbd5e1;font-size:12px;font-weight:700';
@@ -278,10 +293,12 @@
       const headline=document.createElement('div');headline.style.cssText='margin-top:5px;font-weight:800';headline.textContent=response.headline;
       const detail=document.createElement('div');detail.style.cssText='margin-top:5px;color:#aeb8cb;font-size:12px';detail.textContent=response.detail;
       answer.append(title,headline,detail,evidenceDetails(response));box.appendChild(answer);
-      const bar=document.createElement('div');bar.style.cssText='display:flex;gap:7px;margin-top:8px;flex-wrap:wrap';
-      const reviewed=document.createElement('button');reviewed.type='button';reviewed.textContent='Mark reviewed';reviewed.style.cssText='border:1px solid #3a455e;border-radius:9px;background:#1d2637;color:#fff;padding:7px 9px;font-size:12px;font-weight:800;touch-action:manipulation';
-      reviewed.onclick=()=>{box.style.borderColor='#4cbf9f';reviewed.textContent='Reviewed';reviewed.disabled=true};
-      bar.append(reviewed);box.appendChild(bar);box.dataset.lensQuestion=norm(item.question+' '+item.options.map(o=>o.text).join(' ')).toLowerCase();body.appendChild(box);
+      const bar=document.createElement('div');bar.style.cssText='display:flex;gap:5px;margin-top:8px;flex-wrap:wrap';
+      const locate=quickButton('Locate','Locate question on Canvas');locate.onclick=()=>locateQuestion(item);
+      const copy=quickButton('Copy cue','Copy Lens cue');copy.onclick=async()=>{const ok=await copyCue(response.headline);copy.textContent=ok?'Copied':'Blocked';setTimeout(()=>copy.textContent='Copy cue',900)};
+      const next=quickButton('Next','Go to next Canvas question');next.onclick=()=>{const target=shown[(idx+1)%shown.length];if(target)locateQuestion(target)};
+      const reviewed=quickButton('Reviewed','Mark question reviewed');reviewed.onclick=()=>{box.style.borderColor='#4cbf9f';reviewed.textContent='✓ Reviewed';reviewed.disabled=true};
+      bar.append(locate,copy,next,reviewed);box.appendChild(bar);box.dataset.lensQuestion=norm(item.question+' '+item.options.map(o=>o.text).join(' ')).toLowerCase();body.appendChild(box);
     });
     filter.oninput=()=>{const term=norm(filter.value).toLowerCase();body.querySelectorAll('[data-lens-question]').forEach(card=>{card.style.display=!term||card.dataset.lensQuestion.includes(term)?'block':'none'})};
   }

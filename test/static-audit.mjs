@@ -6,7 +6,7 @@ const js=compileHtml(index,'index syntax');compileHtml(smoke,'smoke syntax');for
 const markup=index.replace(/<script(?:\s[^>]*)?>[\s\S]*?<\/script>/gi,''),ids=[...markup.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]),dup=[...new Set(ids.filter((x,i)=>ids.indexOf(x)!==i))];check('No duplicate IDs',dup.length===0,dup.join(', '));
 const tabs=[...markup.matchAll(/data-tab="([^"]+)"/g)].map(m=>m[1]);check('Every tab has panel',tabs.every(t=>ids.includes('panel-'+t)),tabs.length+' tabs');
 const handlers=[...new Set([...markup.matchAll(/on(?:click|change|input)="([A-Za-z_$][\w$]*)\(/g)].map(m=>m[1]))];check('Inline handlers resolve',handlers.every(n=>new RegExp('function\\s+'+n+'\\s*\\(').test(js)),handlers.length+' handlers');
-check('Release version synchronized',version.version==='4.2.1'&&index.includes("APP_VERSION='4.2.1'")&&sw.includes('provenance-v4-2-1')&&manifest.version==='2.2.1');
+check('Release version synchronized',version.version==='4.3.0'&&index.includes("APP_VERSION='4.3.0'")&&sw.includes('provenance-v4-3-0')&&manifest.version==='2.3.0');
 check('Overlay and extension synchronized',overlay===extension);
 check('Canvas dynamic rescans',overlay.includes('MutationObserver')&&overlay.includes('render(false)'));
 check('Canvas nested deduplication',overlay.includes('questionSignature')&&overlay.includes('uniqueQuestions'));
@@ -29,5 +29,7 @@ check('Stale-cache recovery exists',index.includes('ensureLatestVersion')&&index
 check('Accessibility focus and reduced motion styles exist',index.includes(':focus-visible')&&index.includes('prefers-reduced-motion'));
 check('Mobile safe-area support exists',index.includes('safe-area-inset-bottom'));
 check('Canvas Lens compact mobile footprint configured',index.includes('max-height:44vh')&&index.includes('width:min(330px')&&overlay.includes("expandedHeight=compactViewport?'44vh':'74vh'"));
+check('Canvas Lens fast review actions exist',overlay.includes('Locate question on Canvas')&&overlay.includes('Copy Lens cue')&&overlay.includes('Go to next Canvas question')&&index.includes('Locate question on Canvas'));
+check('Fast review actions do not select Canvas controls',!overlay.includes('.checked=')&&!overlay.includes("dispatchEvent(new Event('change')"));
 check('Workflow includes Chromium WebKit Firefox',workflow.includes('chromium webkit firefox'));
 for(const r of results)console.log((r.ok?'PASS':'FAIL')+'  '+r.name+(r.detail?' — '+r.detail:''));if(process.exitCode)throw new Error('Static audit failed');
