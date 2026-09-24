@@ -23,7 +23,7 @@ async function appRun(name,viewport){
   await page.goto(base+'index.html?qa=e2e',{waitUntil:'networkidle'});
   await page.waitForFunction(()=>getComputedStyle(document.getElementById('runtimeWarning')).display==='none');
   pass(name+' booted',await page.locator('#draft').isVisible());
-  pass(name+' current release version',await page.evaluate(()=>APP_VERSION==='4.0.0'));
+  pass(name+' current release version',await page.evaluate(()=>APP_VERSION==='4.1.0'));
   if(name==='mobile')pass(name+' mobile hero orb removed',await page.locator('.orbwrap').evaluate(el=>getComputedStyle(el).display==='none'));
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
   pass(name+' has no horizontal overflow',overflow<=2,'overflow '+overflow+'px');

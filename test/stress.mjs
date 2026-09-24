@@ -205,7 +205,7 @@ async function appSuite(browserType,label,contextOptions){
     return {ok:!!reg,detail:reg?'registered':'no registration'};
   });
   ok(label+' service worker registration',swStatus.ok,swStatus.detail);
-  ok(label+' app version constant',await page.evaluate(()=>APP_VERSION==='4.0.0'));
+  ok(label+' app version constant',await page.evaluate(()=>APP_VERSION==='4.1.0'));
   ok(label+' update banner control exists',(await page.locator('#updateBanner').count())===1);
 
   await page.screenshot({path:'test/artifacts/stress-'+label.replace(/\s+/g,'-')+'.png',fullPage:false});
