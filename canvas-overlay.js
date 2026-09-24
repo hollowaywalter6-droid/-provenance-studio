@@ -260,8 +260,8 @@
       fallback.textContent='Lens could not isolate a question on this view. Scroll to a visible question and tap Scan.';
       body.appendChild(fallback);return;
     }
-    const shown=p.items.length>5?[...p.items].sort((a,b)=>(Number(b.inView)-Number(a.inView))||(a.viewportDistance-b.viewportDistance)).slice(0,5):p.items;
-    if(p.items.length>shown.length){meta.textContent=p.items.length+' unique questions detected • showing '+shown.length+' nearest • Inline review'}
+    const shown=p.items.slice(0,100);
+    meta.textContent=p.items.length+' unique question'+(p.items.length===1?'':'s')+' • '+(p.items.length>100?'first 100 listed':'all listed')+' • Inline review';
     shown.forEach((item,idx)=>{
       const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:14px;padding:10px;margin:8px 0;background:#0c1119';
       const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35;font-size:13px';q.textContent=(item.index||idx+1)+'. '+item.question.slice(0,500);box.appendChild(q);
