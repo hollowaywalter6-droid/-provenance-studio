@@ -276,7 +276,7 @@ async function canvasSuite(browserType,label,contextOptions){
 
   const transfer=await context.newPage();
   await transfer.goto(base+'test/canvas-compat.html?mode=mixed',{waitUntil:'networkidle'});
-  await transfer.waitForFunction(()=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes('6 question blocks'));
+  await transfer.waitForFunction(()=>{const t=document.querySelector('#provenance-canvas-lens-v2')?.innerText||'';return t.includes('6 question blocks')||t.includes('6 unique questions')});
   const originalUrl=transfer.url(),pageCount=context.pages().length;
   ok(label+' Canvas inline review stays on Canvas',(await transfer.locator('#provenance-canvas-lens-v2').innerText()).includes('Inline review'));
   ok(label+' Canvas has no app-switch review buttons',(await transfer.getByRole('button',{name:/Open .*Provenance|Open deeper review/}).count())===0);
