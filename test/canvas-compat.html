@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Canvas Lens Compatibility Fixture</title>
+<style>
+body{font-family:system-ui;padding:24px;max-width:900px;margin:auto}.q,.question,.quiz_question,fieldset,[data-testid*="question-container"],[role="group"]{border:1px solid #bbb;border-radius:12px;padding:14px;margin:12px 0}
+.question_text,[data-testid*="question-text"],legend{font-weight:700}.hidden{display:none}label{display:block;margin:7px 0}iframe{width:100%;height:620px;border:1px solid #999}
+</style>
+</head>
+<body>
+<h1>Canvas Compatibility Fixture</h1>
+<p id="lesson">Reference context: Photosynthesis uses chlorophyll and releases oxygen. Water freezes at zero degrees Celsius. The Pacific Ocean is the largest ocean.</p>
+<div id="host"></div>
+<script>
+const p=new URLSearchParams(location.search),mode=p.get('mode')||'classic',host=document.getElementById('host');
+const classic=()=>`
+<div class="question" data-question-id="1"><div class="question_text">Which pigment absorbs light?</div>
+<label><input type="radio" name="q1"> Chlorophyll</label><label><input type="radio" name="q1"> Oxygen</label></div>
+<div class="quiz_question" data-question-id="2"><div class="question_text">Select products of photosynthesis.</div>
+<label><input type="checkbox"> Glucose</label><label><input type="checkbox"> Oxygen</label></div>`;
+const modern=()=>`
+<div data-testid="question-container-1"><div data-testid="question-text">Which ocean is the largest?</div>
+<div role="radio" aria-label="Pacific Ocean" tabindex="0"></div><div role="radio" aria-label="Atlantic Ocean" tabindex="0"></div></div>
+<div data-testid="question-item-2"><div data-testid="question-text">Explain why chlorophyll matters.</div><textarea aria-label="Response"></textarea></div>`;
+const aria=()=>`
+<fieldset><legend>At what temperature does water freeze?</legend><label><input type="radio" name="a1"> 0 C</label><label><input type="radio" name="a1"> 100 C</label></fieldset>
+<div role="group" aria-labelledby="aria-q2"><div id="aria-q2">Choose the largest ocean.</div><div role="radio" aria-label="Pacific"></div><div role="radio" aria-label="Indian"></div></div>`;
+const selects=()=>`
+<fieldset><legend>Choose the pigment.</legend><select><option disabled selected>Choose</option><option>Chlorophyll</option><option>Hemoglobin</option></select></fieldset>
+<fieldset><legend>Write the freezing point.</legend><input type="text" aria-label="Short response"></fieldset>`;
+const mixed=()=>classic()+modern()+selects();
+if(mode==='classic')host.innerHTML=classic();
+if(mode==='new')host.innerHTML=modern();
+if(mode==='aria')host.innerHTML=aria();
+if(mode==='select')host.innerHTML=selects();
+if(mode==='hidden')host.innerHTML=classic()+'<div class="question hidden" data-question-id="99"><div class="question_text">Hidden question</div><input type="radio"></div>';
+if(mode==='mixed')host.innerHTML=mixed();
+if(mode==='dynamic'){
+  host.innerHTML='<div class="question" data-question-id="1"><div class="question_text">Initial dynamic question?</div><label><input type="radio"> Yes</label><label><input type="radio"> No</label></div>';
+  setTimeout(()=>{host.insertAdjacentHTML('beforeend','<div class="question" data-question-id="2"><div class="question_text">Loaded later?</div><label><input type="radio"> Yes</label><label><input type="radio"> No</label></div>')},700);
+}
+if(mode==='long'){
+  host.innerHTML=Array.from({length:80},(_,i)=>'<div class="question" data-question-id="'+(i+1)+'"><div class="question_text">Stress question '+(i+1)+'?</div><label><input type="radio" name="l'+i+'"> Choice A</label><label><input type="radio" name="l'+i+'"> Choice B</label></div>').join('');
+}
+if(mode==='frame'){
+  host.innerHTML='<iframe id="canvasFrame" src="./canvas-compat.html?mode=classic&embedded=1"></iframe>';
+}
+window.PROVENANCE_APP_URL=new URL('../',location.href).href;
+</script>
+<script src="../canvas-overlay.js"></script>
+</body></html>

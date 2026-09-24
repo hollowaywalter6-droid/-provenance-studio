@@ -29,7 +29,7 @@ jobs:
       - name: Install browser test runtime
         run: |
           npm install --no-save --no-package-lock playwright@latest
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
       - name: Start local site
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/provenance-server.log 2>&1 &
@@ -38,6 +38,10 @@ jobs:
         env:
           BASE_URL: http://127.0.0.1:4173/
         run: node test/e2e.mjs
+      - name: Stress, WebKit and Canvas compatibility matrix
+        env:
+          BASE_URL: http://127.0.0.1:4173/
+        run: node test/stress.mjs
       - name: Upload QA screenshots
         if: always()
         uses: actions/upload-artifact@v4
