@@ -272,12 +272,6 @@
         list.textContent=item.options.map(o=>o.label+'. '+o.text+(o.feedback==='correct'?'  ✓ Canvas: correct':o.feedback==='incorrect'?'  ✕ Canvas: incorrect':'')).join('\n');
         choices.append(summary,list);box.appendChild(choices);
       }
-      const selected=item.options.filter(o=>o.selected);
-      if(selected.length){
-        const current=document.createElement('div');current.style.cssText='margin-top:7px;padding:7px 8px;border-radius:9px;background:#182132;color:#d8e1f1;font-size:12px';
-        current.textContent='Currently selected in Canvas: '+selected.map(o=>o.label+' — '+o.text).join(', ');
-        box.appendChild(current);
-      }
       const response=localResponse(item,(p.context+'\n'+lensNotes).trim());
       const answer=document.createElement('div');answer.style.cssText='margin-top:8px;padding:9px;border-radius:10px;background:#141c29;line-height:1.4';
       const title=document.createElement('div');title.style.cssText='font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#63e6be;font-weight:800';title.textContent='Lens review';
