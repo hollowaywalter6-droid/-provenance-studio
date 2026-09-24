@@ -1,0 +1,16 @@
+{
+  "name": "Provenance Studio",
+  "short_name": "Provenance",
+  "description": "Local-first writing intelligence studio",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0d12",
+  "theme_color": "#10131a",
+  "icons": [{
+    "src": "./icon.svg",
+    "sizes": "any",
+    "type": "image/svg+xml",
+    "purpose": "any maskable"
+  }]
+}
