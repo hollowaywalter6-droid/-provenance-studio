@@ -41,7 +41,7 @@ jobs:
       - name: Stress, WebKit and Canvas compatibility matrix
         env:
           BASE_URL: http://127.0.0.1:4173/
-        run: node test/stress.mjs
+        run: node test/canvas-neutral-stress.mjs
       - name: Upload QA screenshots
         if: always()
         uses: actions/upload-artifact@v4
