@@ -27,9 +27,11 @@ frame.addEventListener('load',()=>setTimeout(()=>{
     const ok=names.every(n=>typeof w[n]==='function');all=row('Button handlers resolve',ok,names.length+' unique handlers checked')&&all;
   }catch(e){all=row('Button handlers resolve',false,e.message)&&all}
   try{
-    const b=[...d.querySelectorAll('button')].filter(x=>{const r=x.getBoundingClientRect();return r.width===0||r.height===0});
-    all=row('Button geometry',b.length===0,b.length?'Hidden/zero buttons: '+b.length:'All buttons have geometry')&&all;
-  }catch(e){all=row('Button geometry',false,e.message)&&all}
+    const tabs=[...d.querySelectorAll('.tab')],original=d.querySelector('.tab.active')?.dataset.tab||'draft';let total=0,bad=0;
+    tabs.forEach(t=>{w.showTab(t.dataset.tab);[...d.getElementById('panel-'+t.dataset.tab).querySelectorAll('button')].forEach(b=>{total++;const r=b.getBoundingClientRect();if(r.width===0||r.height===0)bad++})});
+    w.showTab(original);
+    all=row('Button geometry across every panel',bad===0,bad?bad+' controls had zero geometry':total+' visible-panel buttons measured')&&all;
+  }catch(e){all=row('Button geometry across every panel',false,e.message)&&all}
   try{
     const p=w.splitStudyQuestions('1. Example?\nA. One\nB. Two\n\n2. Explain.').map(w.parseStudyBlock);
     all=row('Canvas parser',p.length===2&&p[0].options.length===2,'Question blocks and choices parsed')&&all;
