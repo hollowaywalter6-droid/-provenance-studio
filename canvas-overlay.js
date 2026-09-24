@@ -140,9 +140,9 @@
     if(item.options.length){
       const ranked=item.options.map(o=>({...o,score:optionEvidenceScore(item,o,context)})).sort((x,y)=>y.score-x.score);
       const best=ranked[0],second=ranked[1],clear=best&&best.score>=25&&(!second||best.score-second.score>=5);
-      return {headline:clear?'Best-supported page-context choice: '+best.label+' — '+best.text:'No single option is strongly supported by the visible page context.',detail:clear?'This choice has the strongest support in the captured page context. Review that context before using it.':'Open the deeper review to inspect the evidence instead of relying on a weak tie.',evidence:ev};
+      return {headline:clear?'Best-supported page-context choice: '+best.label+' — '+best.text:'No single option is strongly supported by the visible page context.',detail:clear?'This choice has the strongest support in the captured page context. Review that context before using it.':'No clear choice is supported. Expand Evidence below to inspect the captured context.',evidence:ev};
     }
-    return {headline:ev.length?'Response notes from this page':'No supporting context found on this page.',detail:ev.length?ev.map(x=>'• '+x.text).join('\n'):'Open the deeper review and add notes or source material.',evidence:ev};
+    return {headline:ev.length?'Response notes from this page':'No supporting context found on this page.',detail:ev.length?ev.map(x=>'• '+x.text).join('\n'):'No supporting page context was found. Add or open relevant source material, then rescan.',evidence:ev};
   }
   function scan(){
     const nodes=candidateRoots(),items=nodes.map(parseQuestion).filter(x=>x.question.length>2);
@@ -219,6 +219,13 @@
     p.items.forEach((item,idx)=>{
       const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:14px;padding:10px;margin:8px 0;background:#0c1119';
       const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35;font-size:13px';q.textContent=(idx+1)+'. '+item.question.slice(0,500);box.appendChild(q);
+      if(item.options.length){
+        const choices=document.createElement('details');choices.style.cssText='margin-top:7px;border:1px solid #20293a;border-radius:10px;padding:7px;background:#0b1119';
+        const summary=document.createElement('summary');summary.textContent='Detected choices';summary.style.cssText='cursor:pointer;color:#cbd5e1;font-size:12px;font-weight:700';
+        const list=document.createElement('div');list.style.cssText='margin-top:7px;color:#aeb8cb;font-size:12px;line-height:1.45';
+        list.textContent=item.options.map(o=>o.label+'. '+o.text).join('\n');
+        choices.append(summary,list);box.appendChild(choices);
+      }
       const response=localResponse(item,p.context);
       const answer=document.createElement('div');answer.style.cssText='margin-top:8px;padding:9px;border-radius:10px;background:#141c29;line-height:1.4';
       const title=document.createElement('div');title.style.cssText='font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#63e6be;font-weight:800';title.textContent='Lens review';

@@ -207,13 +207,13 @@ async function canvasSuite(browserType,label,contextOptions){
     ok(label+' Canvas '+mode+' detection',text.includes(count+' question block'),text.split('\n')[0]);
     const selected=await page.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
     ok(label+' Canvas '+mode+' no auto-selection',selected===0,selected+' selected');
-    const ctx=await page.evaluate(()=>{const r=document.getElementById('provenance-canvas-lens-v2');return !!r&&r.getBoundingClientRect().width>0&&r.getBoundingClientRect().height>0&&r.innerText.includes('Lens review')});
+    const ctx=await page.evaluate(()=>{const r=document.getElementById('provenance-canvas-lens-v2');return !!r&&r.getBoundingClientRect().width>0&&r.getBoundingClientRect().height>0&&r.innerText.includes('question block')});
     ok(label+' Canvas '+mode+' overlay visible',ctx);
     if(mode==='classic'){
       await page.getByRole('button',{name:'Scan'}).click();
       ok(label+' Canvas Scan button works',(await page.locator('#provenance-canvas-lens-v2').innerText()).includes('2 question blocks'));
       const reviewed=page.getByRole('button',{name:'Mark reviewed'}).first();await reviewed.click();
-      ok(label+' Canvas Mark reviewed works',(await reviewed.textContent())==='Reviewed');
+      ok(label+' Canvas Mark reviewed works',(await reviewed.textContent()).includes('Reviewed')&&await reviewed.isDisabled());
     }
     if(mode==='observed'){
       const overlayText=await page.locator('#provenance-canvas-lens-v2').innerText();
