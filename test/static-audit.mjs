@@ -66,9 +66,9 @@ check('iPhone bookmarklet reads Canvas feedback',index.includes("Canvas feedback
 check('Bookmarklet copy has manual fallback',index.includes('legacyCopyText')&&index.includes('canvasBookmarkletCode'));
 check('Canvas review removes percentage scoring',!index.includes('choice-score')&&!index.includes("note overlap '+o.score+'%"));
 check('Canvas capture builds clean context',index.includes("items.forEach(x=>{const t=norm(x.el.innerText)"));
-check('iPhone bookmarklet uses inline context review',index.includes("Inline review")&&index.includes("tap bookmark again to rescan"));
+check('iPhone bookmarklet uses inline context review',index.includes('iphoneCanvasLensRuntime')&&index.includes('Review notes')&&index.includes('Canvas feedback identifies'));
 check('Canvas payload enters review without lossy reparse',index.includes("studyItems=p.items.map(function(item,i)"));
-check('Canvas bookmarklet is inline/CSP resilient',index.includes("return 'javascript:'+code")&&!index.includes("s.src='https://hollowaywalter6-droid.github.io/-provenance-studio/canvas-overlay.js"));
+check('Canvas bookmarklet is inline/CSP resilient',index.includes("return 'javascript:('+iphoneCanvasLensRuntime.toString()+')()'")&&!index.includes("s.src='https://hollowaywalter6-droid.github.io/-provenance-studio/canvas-overlay.js"));
 check('Canvas extension runs in frames',manifest.content_scripts?.[0]?.all_frames===true);
 check('Canvas extension declares Canvas hosts',(manifest.host_permissions||[]).some(x=>x.includes('instructure.com')));
 check('Canvas fixture present',read('test/canvas-fixture.html').includes('data-question-id="1"'));
