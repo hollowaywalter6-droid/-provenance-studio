@@ -132,6 +132,17 @@
     }
     return {headline:ev.length?'Response notes from this page':'No supporting context found on this page.',detail:ev.length?ev.map(x=>'• '+x.text).join('\n'):'Open the deeper review and add notes or source material.',evidence:ev};
   }
+  function scan(){
+    const nodes=candidateRoots(),items=nodes.map(parseQuestion).filter(x=>x.question.length>2);
+    const iframeCount=[...document.querySelectorAll('iframe')].filter(visible).length;
+    return {
+      type:'PROVENANCE_CANVAS_CAPTURE',version:2,
+      payload:{
+        title:document.title,url:location.href,items,context:pageContext(nodes),
+        meta:{frame:window.top===window.self?'top':'embedded',iframeCount,capturedAt:new Date().toISOString()}
+      }
+    };
+  }
   function compactPayload(capture,item){
     const p=capture.payload||{},items=(item?[item]:(p.items||[])).slice(0,20).map((q,i)=>({
       index:i+1,question:String(q.question||'').slice(0,900),
