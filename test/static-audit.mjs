@@ -54,7 +54,9 @@ check('Canvas extension runs in frames',manifest.content_scripts?.[0]?.all_frame
 check('Canvas extension declares Canvas hosts',(manifest.host_permissions||[]).some(x=>x.includes('instructure.com')));
 check('Canvas fixture present',read('test/canvas-fixture.html').includes('data-question-id="1"'));
 check('Live smoke test present',smoke.includes('ALL LIVE SMOKE TESTS PASSED'));
-check('Service worker cache is v2.8',sw.includes("provenance-v2-8"));
+check('Service worker cache is v2.9',sw.includes("provenance-v2-9"));
+check('Advanced PDF.js fallback present',index.includes('extractPdfWithPdfJs')&&index.includes('pdfjs-dist@6.3.289'));
+check('Scanned PDF OCR fallback present',index.includes('ocrPdf')&&index.includes('tesseract.js@7.0.0'));
 check('Deployment no longer cancels superseded runs',workflow.includes('cancel-in-progress: false'));
 
 for(const r of results) console.log((r.ok?'PASS':'FAIL')+'  '+r.name+(r.detail?' — '+r.detail:''));

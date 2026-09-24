@@ -102,7 +102,7 @@ input[type="range"]{padding:0;background:transparent;border:0}
     <div class="card glass">
       <div class="kicker">Local Intelligence Core</div>
       <div class="big">Your writing workspace should work even when every cloud account is disconnected.</div>
-      <p class="small">Projects, uploads, analysis, revision tools, exports, diagnostics, and local storage all run on this device. AI, OCR, and live web verification are not connected in this edition.</p>
+      <p class="small">Projects, uploads, analysis, revision tools, exports, diagnostics, and local storage run on this device. Advanced PDF decoding and OCR load browser libraries only when a PDF needs them.</p>
       <div class="toolbar">
         <button class="primary" onclick="showTab('draft')">Open workspace</button>
         <button class="secondary" onclick="runSelfTest()">Check app health</button>
@@ -147,7 +147,7 @@ input[type="range"]{padding:0;background:transparent;border:0}
           <div class="label">Upload a document</div>
           <div class="filebox">
             <strong>Tap here to choose a file</strong>
-            <div class="small" style="margin-top:6px">TXT, MD, CSV, JSON, DOCX, and many text-based PDFs can be extracted locally. Files that need OCR still upload safely and show a clear status.</div>
+            <div class="small" style="margin-top:6px">TXT, MD, CSV, JSON, DOCX, and PDFs are supported. PDFs use the built-in parser first, then Mozilla PDF.js for encoded text. Scanned PDFs can fall back to browser OCR when online.</div>
             <input id="fileInput" type="file" accept=".txt,.md,.csv,.json,.docx,.pdf,image/*" onchange="handleFile(event)">
           </div>
           <div class="label" style="margin-top:16px">Camera / photo</div>
@@ -157,6 +157,7 @@ input[type="range"]{padding:0;background:transparent;border:0}
             <input id="cameraInput" type="file" accept="image/*" capture="environment" onchange="handleImage(event)">
           </div>
           <div id="uploadStatus" class="result" style="margin-top:14px;min-height:80px">No file selected.</div>
+          <div class="toolbar"><button id="retryPdfOcr" class="secondary" style="display:none" onclick="runPendingPdfOcr()">Run OCR on this PDF</button></div>
           <img id="imagePreview" class="preview" alt="Uploaded image preview">
         </div>
       </div>
@@ -333,7 +334,7 @@ input[type="range"]{padding:0;background:transparent;border:0}
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v2.8 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v2.9 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
@@ -472,6 +473,115 @@ async function extractPdf(arrayBuffer){
   if(text.length<8) throw new Error('No readable text layer found. This PDF may be scanned, encrypted, or use an encoded font; OCR needs an optional vision/OCR connector.');
   return text;
 }
+
+const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/legacy/build/pdf.mjs';
+const PDFJS_WORKER_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/legacy/build/pdf.worker.mjs';
+const TESSERACT_URL='https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.esm.min.js';
+let pdfJsPromise=null,tesseractPromise=null,pendingPdfFile=null;
+
+async function loadPdfJs(){
+  if(pdfJsPromise)return pdfJsPromise;
+  pdfJsPromise=import(PDFJS_URL).then(mod=>{
+    if(mod.GlobalWorkerOptions)mod.GlobalWorkerOptions.workerSrc=PDFJS_WORKER_URL;
+    return mod;
+  }).catch(err=>{pdfJsPromise=null;throw new Error('Advanced PDF parser could not load: '+((err&&err.message)||err))});
+  return pdfJsPromise;
+}
+async function extractPdfWithPdfJs(arrayBuffer,onProgress){
+  const pdfjs=await loadPdfJs();
+  const data=arrayBuffer instanceof Uint8Array?arrayBuffer:new Uint8Array(arrayBuffer);
+  const doc=await pdfjs.getDocument({data:data.slice(),isEvalSupported:false}).promise;
+  const pages=[];
+  for(let i=1;i<=doc.numPages;i++){
+    if(onProgress)onProgress('Reading PDF text • page '+i+' of '+doc.numPages+'…');
+    const page=await doc.getPage(i);
+    const content=await page.getTextContent();
+    let line='',lastY=null;
+    const pageLines=[];
+    for(const item of content.items||[]){
+      const str=String(item.str||'').trim();if(!str)continue;
+      const y=item.transform&&item.transform.length>5?Math.round(item.transform[5]):null;
+      if(lastY!==null&&y!==null&&Math.abs(y-lastY)>4&&line.trim()){pageLines.push(line.trim());line=''}
+      line+=(line?' ':'')+str;lastY=y;
+    }
+    if(line.trim())pageLines.push(line.trim());
+    pages.push(pageLines.join('\n'));
+    try{page.cleanup()}catch(_){}
+  }
+  try{doc.cleanup();doc.destroy()}catch(_){}
+  const text=pages.join('\n\n').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+  if(text.length<8)throw new Error('No usable embedded text found.');
+  return text;
+}
+async function loadTesseract(){
+  if(tesseractPromise)return tesseractPromise;
+  tesseractPromise=import(TESSERACT_URL).catch(err=>{tesseractPromise=null;throw new Error('OCR engine could not load: '+((err&&err.message)||err))});
+  return tesseractPromise;
+}
+async function ocrPdf(arrayBuffer,onProgress){
+  const [pdfjs,tess]=await Promise.all([loadPdfJs(),loadTesseract()]);
+  const data=arrayBuffer instanceof Uint8Array?arrayBuffer:new Uint8Array(arrayBuffer);
+  const doc=await pdfjs.getDocument({data:data.slice(),isEvalSupported:false}).promise;
+  const worker=await tess.createWorker('eng',undefined,{logger:m=>{
+    if(onProgress&&m&&m.status==='recognizing text'&&Number.isFinite(m.progress))onProgress('OCR recognizing text • '+Math.round(m.progress*100)+'%');
+  }});
+  const pages=[];
+  try{
+    for(let i=1;i<=doc.numPages;i++){
+      if(onProgress)onProgress('OCR • rendering page '+i+' of '+doc.numPages+'…');
+      const page=await doc.getPage(i);
+      const base=page.getViewport({scale:1});
+      const maxDim=1900;
+      const scale=Math.max(1,Math.min(2,maxDim/Math.max(base.width,base.height)));
+      const viewport=page.getViewport({scale});
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(viewport.width));
+      canvas.height=Math.max(1,Math.round(viewport.height));
+      const ctx=canvas.getContext('2d',{alpha:false});
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+      await page.render({canvasContext:ctx,viewport}).promise;
+      if(onProgress)onProgress('OCR • recognizing page '+i+' of '+doc.numPages+'…');
+      const result=await worker.recognize(canvas);
+      const txt=String(result&&result.data&&result.data.text||'').trim();
+      if(txt)pages.push(txt);
+      canvas.width=1;canvas.height=1;
+      try{page.cleanup()}catch(_){}
+    }
+  }finally{
+    try{await worker.terminate()}catch(_){}
+    try{doc.cleanup();doc.destroy()}catch(_){}
+  }
+  const text=pages.join('\n\n').replace(/\n{3,}/g,'\n\n').trim();
+  if(text.length<8)throw new Error('OCR completed but could not recognize readable text.');
+  return text;
+}
+async function extractPdfSmart(arrayBuffer,file,onProgress){
+  try{return await extractPdf(arrayBuffer)}catch(_){}
+  if(onProgress)onProgress('Basic PDF parser found no usable text. Trying advanced PDF decoding…');
+  try{return await extractPdfWithPdfJs(arrayBuffer,onProgress)}catch(pdfErr){
+    if(!navigator.onLine)throw new Error('This PDF needs advanced decoding or OCR. Connect to the internet once so the browser can load the PDF/OCR engine.');
+    if(file&&file.size>12*1024*1024){
+      pendingPdfFile=file;
+      throw new Error('This appears to be a scanned/image PDF. It is larger than 12 MB, so automatic OCR was paused to protect mobile memory. Tap “Run OCR on this PDF” to continue.');
+    }
+    if(onProgress)onProgress('No embedded text found. Starting OCR automatically…');
+    return await ocrPdf(arrayBuffer,onProgress);
+  }
+}
+async function runPendingPdfOcr(){
+  const f=pendingPdfFile;if(!f){notice('Choose a PDF first.');return}
+  const btn=$('retryPdfOcr');btn.disabled=true;
+  try{
+    const text=await ocrPdf(await f.arrayBuffer(),msg=>$('uploadStatus').textContent=msg);
+    $('draft').value=text;
+    $('projectName').value=$('projectName').value||f.name.replace(/\.[^.]+$/,'');
+    $('uploadStatus').textContent='Loaded '+f.name+' with OCR • '+words(text).length+' words extracted.';
+    pendingPdfFile=null;btn.style.display='none';onDraftChange();
+  }catch(err){
+    $('uploadStatus').textContent='OCR could not finish: '+((err&&err.message)||err);
+    btn.style.display='inline-flex';
+  }finally{btn.disabled=false}
+}
 async function handleFile(e){
   const f=e.target.files&&e.target.files[0]; if(!f)return;
   $('uploadStatus').textContent='Reading '+f.name+'…';
@@ -485,7 +595,10 @@ async function handleFile(e){
     }else if(ext==='docx'){
       text=await extractDocx(await f.arrayBuffer());
     }else if(ext==='pdf'){
-      text=await extractPdf(await f.arrayBuffer());
+      pendingPdfFile=f;
+      $('retryPdfOcr').style.display='none';
+      text=await extractPdfSmart(await f.arrayBuffer(),f,msg=>$('uploadStatus').textContent=msg);
+      pendingPdfFile=null;
     }else if(f.type.startsWith('image/')||['jpg','jpeg','png','webp','heic','heif'].includes(ext)){
       await handleImage({target:{files:[f]}});
       return;
@@ -495,9 +608,12 @@ async function handleFile(e){
     $('draft').value=String(text||'');
     $('projectName').value=$('projectName').value||f.name.replace(/\.[^.]+$/,'');
     $('uploadStatus').textContent='Loaded '+f.name+' successfully • '+words(text).length+' words extracted.';
+    $('retryPdfOcr').style.display='none';
     onDraftChange();
   }catch(err){
-    $('uploadStatus').textContent='Upload worked, but text extraction could not finish: '+(err.message||err)+'. You can still paste text, or use an optional OCR/AI connector for scanned documents.';
+    const msg=(err&&err.message)||String(err);
+    $('uploadStatus').textContent='PDF/file upload succeeded, but extraction needs attention: '+msg;
+    if(ext==='pdf'&&pendingPdfFile)$('retryPdfOcr').style.display='inline-flex';
   }finally{
     try{e.target.value=''}catch(_){}
   }
@@ -952,7 +1068,7 @@ function runSelfTest(){
   t('Camera input present',()=>!!$('cameraInput'));
   t('TXT/MD/CSV/JSON parser',()=>typeof handleFile==='function');
   t('DOCX local parser',()=>typeof extractDocx==='function'&&'DecompressionStream' in window);
-  t('PDF text-layer parser',()=>typeof extractPdf==='function');
+  t('PDF extraction stack',()=>typeof extractPdf==='function'&&typeof extractPdfSmart==='function'&&typeof extractPdfWithPdfJs==='function'&&typeof ocrPdf==='function');
   t('Image preview handler',()=>typeof handleImage==='function');
   t('Project save engine',()=>Array.isArray(getProjects()));
   t('Text analysis engine',()=>typeof analyze==='function');
@@ -979,7 +1095,7 @@ function interactiveBoot(){
   try{
     loadCurrent();
     const w=$('runtimeWarning');if(w)w.style.display='none';
-    notice('Ready • Version 2.8 • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);
+    notice('Ready • Version 2.9 • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);
   }catch(err){
     const w=$('runtimeWarning');
     if(w){w.style.display='block';w.textContent='Startup recovered with an error: '+((err&&err.message)||err)+'. Reload once, then run health checks.'}
@@ -992,7 +1108,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && window.isSecureContext) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.8',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.9',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
 }
 </script>
 </body>

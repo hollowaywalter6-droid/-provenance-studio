@@ -6,6 +6,24 @@ fs.mkdirSync('test/artifacts',{recursive:true});
 const failures=[];
 const ok=(name,pass,detail='')=>{console.log((pass?'PASS':'FAIL')+'  '+name+(detail?' — '+detail:''));if(!pass)failures.push(name+(detail?': '+detail:''));};
 const safe=async(name,fn)=>{try{await fn()}catch(e){ok(name,false,e.message)}};
+function makeHexPdf(text){
+  const hex=Buffer.from(text,'utf8').toString('hex').toUpperCase();
+  const stream='BT /F1 24 Tf 72 720 Td <'+hex+'> Tj ET';
+  const objs=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    '<< /Length '+Buffer.byteLength(stream,'ascii')+' >>\nstream\n'+stream+'\nendstream'
+  ];
+  let pdf='%PDF-1.4\n',offs=[0];
+  for(let i=0;i<objs.length;i++){offs[i+1]=Buffer.byteLength(pdf,'ascii');pdf+=(i+1)+' 0 obj\n'+objs[i]+'\nendobj\n'}
+  const xref=Buffer.byteLength(pdf,'ascii');
+  pdf+='xref\n0 '+(objs.length+1)+'\n0000000000 65535 f \n';
+  for(let i=1;i<=objs.length;i++)pdf+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+='trailer\n<< /Size '+(objs.length+1)+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF\n';
+  return Buffer.from(pdf,'ascii');
+}
 
 async function appSuite(browserType,label,contextOptions){
   const browser=await browserType.launch({headless:true});
@@ -116,7 +134,15 @@ async function appSuite(browserType,label,contextOptions){
   const pdf=Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\nBT (PDF stress parser works correctly.) Tj ET\n%%EOF');
   await upload.setInputFiles({name:'audit.pdf',mimeType:'application/pdf',buffer:pdf});
   await page.waitForFunction(()=>document.getElementById('draft').value.includes('PDF stress parser works'));
-  ok(label+' PDF text parser',true);
+  ok(label+' PDF basic text parser',true);
+
+  const encodedPdf=makeHexPdf('ADVANCED PDF ENCODED TEXT WORKS');
+  await upload.setInputFiles({name:'encoded.pdf',mimeType:'application/pdf',buffer:encodedPdf});
+  await page.waitForFunction(()=>document.getElementById('draft').value.includes('ADVANCED PDF ENCODED TEXT WORKS'),null,{timeout:30000});
+  ok(label+' PDF.js encoded-text fallback',true);
+
+  const ocrText=await page.evaluate(async bytes=>await ocrPdf(new Uint8Array(bytes).buffer,()=>{}),Array.from(makeHexPdf('OCR TEST 123')));
+  ok(label+' PDF OCR render/recognition pipeline',/OCR|TEST|123/i.test(ocrText),ocrText.slice(0,80).replace(/\s+/g,' '));
 
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9WlS4AAAAASUVORK5CYII=','base64');
   await upload.setInputFiles({name:'audit.png',mimeType:'image/png',buffer:png});
