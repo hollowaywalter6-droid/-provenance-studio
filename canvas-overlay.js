@@ -128,7 +128,7 @@
     };
   }
   function sendToApp(capture,item){
-    const data=structuredClone?structuredClone(capture):JSON.parse(JSON.stringify(capture));
+    const data=typeof structuredClone==='function'?structuredClone(capture):JSON.parse(JSON.stringify(capture));
     if(item)data.payload.items=[item];
     const popup=window.open(APP_URL+'#canvas-ready','_blank');
     if(!popup){alert('The browser blocked the Provenance window. Allow pop-ups for Canvas, then try again.');return}
