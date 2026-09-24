@@ -245,6 +245,32 @@
     const b=document.createElement('button');b.type='button';b.textContent=text;b.setAttribute('aria-label',label||text);
     b.style.cssText='border:1px solid #3a455e;border-radius:9px;background:#1d2637;color:#fff;padding:6px 8px;font-size:11px;font-weight:800;touch-action:manipulation';return b
   }
+  function practiceAutofillEnabled(){
+    return document.documentElement.getAttribute('data-provenance-autofill')==='practice'||document.body?.getAttribute('data-provenance-autofill')==='practice'
+  }
+  function emitPracticeInput(control){
+    control.dispatchEvent(new Event('input',{bubbles:true}));control.dispatchEvent(new Event('change',{bubbles:true}))
+  }
+  function fillPracticeQuestion(item){
+    if(!practiceAutofillEnabled())return false;
+    const sig=questionSignature(item),pair=uniqueQuestions(candidateRoots()).find(p=>questionSignature(p.item)===sig);
+    if(!pair||!pair.el)return false;
+    const root=pair.el;let changed=0;
+    root.querySelectorAll('input[type="radio"],input[type="checkbox"]').forEach(control=>{
+      const flag=control.getAttribute('data-provenance-correct');if(flag===null)return;
+      const shouldCheck=flag==='true';if(control.checked!==shouldCheck){control.checked=shouldCheck;emitPracticeInput(control);changed++}
+    });
+    root.querySelectorAll('select').forEach(control=>{
+      const option=[...control.options].find(o=>o.getAttribute('data-provenance-correct')==='true');
+      if(option&&control.value!==option.value){control.value=option.value;emitPracticeInput(control);changed++}
+    });
+    root.querySelectorAll('textarea,input[type="text"],input[type="number"],[contenteditable="true"]').forEach(control=>{
+      const answer=control.getAttribute('data-provenance-answer');if(answer===null)return;
+      const current=control.isContentEditable?control.textContent:control.value;
+      if(current!==answer){if(control.isContentEditable)control.textContent=answer;else control.value=answer;emitPracticeInput(control);changed++}
+    });
+    return changed>0
+  }
   function evidenceDetails(response){
     const details=document.createElement('details');details.style.cssText='margin-top:8px;border-top:1px solid #263147;padding-top:7px';
     const summary=document.createElement('summary');summary.textContent='Evidence';summary.style.cssText='cursor:pointer;color:#cbd5e1;font-size:12px;font-weight:700';
@@ -277,6 +303,13 @@
     }
     const shown=p.items.slice(0,100);
     meta.textContent=p.items.length+' unique question'+(p.items.length===1?'':'s')+' • '+(p.items.length>100?'first 100 listed':'all listed')+' • Inline review';
+    if(practiceAutofillEnabled()){
+      meta.textContent+=' • Practice autofill enabled';
+      const practiceBar=document.createElement('div');practiceBar.style.cssText='display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap';
+      const fillAll=quickButton('Fill all practice','Fill all practice questions');
+      fillAll.onclick=()=>{let count=0;shown.forEach(it=>{if(fillPracticeQuestion(it))count++});fillAll.textContent=count?'Filled '+count:'No keyed answers';setTimeout(()=>fillAll.textContent='Fill all practice',1100)};
+      practiceBar.append(fillAll);body.appendChild(practiceBar)
+    }
     shown.forEach((item,idx)=>{
       const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:14px;padding:10px;margin:8px 0;background:#0c1119';
       const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35;font-size:13px';q.textContent=(item.index||idx+1)+'. '+item.question.slice(0,500);box.appendChild(q);
@@ -298,6 +331,7 @@
       const copy=quickButton('Copy cue','Copy Lens cue');copy.onclick=async()=>{const ok=await copyCue(response.headline);copy.textContent=ok?'Copied':'Blocked';setTimeout(()=>copy.textContent='Copy cue',900)};
       const next=quickButton('Next','Go to next Canvas question');next.onclick=()=>{const target=shown[(idx+1)%shown.length];if(target)locateQuestion(target)};
       const reviewed=quickButton('Reviewed','Mark question reviewed');reviewed.onclick=()=>{box.style.borderColor='#4cbf9f';reviewed.textContent='✓ Reviewed';reviewed.disabled=true};
+      if(practiceAutofillEnabled()){const fill=quickButton('Fill this','Fill this practice question');fill.onclick=()=>{const ok=fillPracticeQuestion(item);fill.textContent=ok?'Filled':'No key';setTimeout(()=>fill.textContent='Fill this',900)};bar.append(fill)}
       bar.append(locate,copy,next,reviewed);box.appendChild(bar);box.dataset.lensQuestion=norm(item.question+' '+item.options.map(o=>o.text).join(' ')).toLowerCase();body.appendChild(box);
     });
     filter.oninput=()=>{const term=norm(filter.value).toLowerCase();body.querySelectorAll('[data-lens-question]').forEach(card=>{card.style.display=!term||card.dataset.lensQuestion.includes(term)?'block':'none'})};

@@ -1,0 +1,31 @@
+<!doctype html>
+<html data-provenance-autofill="practice"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Provenance Practice Autofill Lab</title>
+<style>body{font-family:system-ui;padding:24px;max-width:850px;margin:auto;background:#f7f8fb;color:#172033}.question{background:#fff;border:1px solid #cbd3df;border-radius:12px;padding:16px;margin:14px 0}.question_text{font-weight:750;margin-bottom:10px}label{display:block;margin:8px 0}textarea,select{width:100%;box-sizing:border-box;padding:10px;margin-top:6px}button.manual{padding:10px 14px;border-radius:9px;border:1px solid #9aa6b5;background:#fff}</style></head>
+<body data-provenance-autofill="practice">
+<h1>Practice Autofill Lab</h1>
+<p class="lesson">This developer sandbox uses an explicit local answer key. Photosynthesis uses carbon dioxide and water with light energy, and produces glucose and oxygen. Chlorophyll absorbs light.</p>
+<div class="question" data-question-id="p1">
+  <div class="question_text">Which substance absorbs light during photosynthesis?</div>
+  <label><input id="p1a" type="radio" name="p1" data-provenance-correct="false"> Oxygen</label>
+  <label><input id="p1b" type="radio" name="p1" data-provenance-correct="true"> Chlorophyll</label>
+  <label><input id="p1c" type="radio" name="p1" data-provenance-correct="false"> Glucose</label>
+</div>
+<div class="question" data-question-id="p2">
+  <div class="question_text">In a short phrase, what does photosynthesis produce?</div>
+  <textarea id="p2" data-provenance-answer="Glucose and oxygen."></textarea>
+</div>
+<div class="question" data-question-id="p3">
+  <div class="question_text">Select both products of photosynthesis.</div>
+  <label><input id="p3a" type="checkbox" data-provenance-correct="true"> Glucose</label>
+  <label><input id="p3b" type="checkbox" data-provenance-correct="false"> Carbon dioxide</label>
+  <label><input id="p3c" type="checkbox" data-provenance-correct="true"> Oxygen</label>
+</div>
+<div class="question" data-question-id="p4">
+  <div class="question_text">Which gas is used during photosynthesis?</div>
+  <select id="p4"><option value="">Choose one</option><option value="oxygen">Oxygen</option><option value="carbon-dioxide" data-provenance-correct="true">Carbon dioxide</option><option value="nitrogen">Nitrogen</option></select>
+</div>
+<button id="manualSubmit" class="manual" type="button">Manual submit demo</button>
+<div id="submitStatus" aria-live="polite"></div>
+<script>window.__manualSubmitCount=0;document.getElementById('manualSubmit').onclick=()=>{window.__manualSubmitCount++;document.getElementById('submitStatus').textContent='Manual submit pressed.'};window.PROVENANCE_APP_URL=location.origin+location.pathname.replace(/\/test\/practice-autofill\.html$/,'/');</script>
+<script src="../canvas-overlay.js"></script>
+</body></html>
