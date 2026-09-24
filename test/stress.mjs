@@ -313,7 +313,7 @@ async function canvasSuite(browserType,label,contextOptions){
   ok(label+' iPhone bookmarklet shows current selected wrong answer',bmText.includes('Currently selected: A — The distinction between nature and culture is becoming increasingly blurred.'));
   ok(label+' iPhone bookmarklet stays on Canvas',bm.url()===bmUrl,bm.url());
   ok(label+' iPhone bookmarklet preserves answer controls',(await bm.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count())===beforeSelected);
-  await bm.getByRole('button',{name:'Minimize Canvas Lens'}).click();
+  await bm.locator('#provenance-iphone-lens').getByRole('button',{name:'Minimize Canvas Lens'}).click();
   ok(label+' iPhone Lens minimizes',await bm.locator('#provenance-iphone-lens [data-b]').isHidden());
   await bm.close();
 
