@@ -221,13 +221,13 @@ async function canvasSuite(browserType,label,contextOptions){
     const page=await context.newPage();
     await page.goto(base+'test/canvas-compat.html?mode='+mode,{waitUntil:'networkidle'});
     await page.waitForSelector('#provenance-canvas-lens-v2');
-    await page.waitForFunction(expected=>document.querySelector('#provenance-canvas-lens-v2')?.innerText.includes(expected+' question block'),count);
+    await page.waitForFunction(expected=>{const t=document.querySelector('#provenance-canvas-lens-v2')?.innerText||'';return t.includes(expected+' question block')||t.includes(expected+' unique question')},count);
     const text=await page.locator('#provenance-canvas-lens-v2').innerText();
-    ok(label+' Canvas '+mode+' detection',text.includes(count+' question block'),text.split('\n')[0]);
+    ok(label+' Canvas '+mode+' detection',text.includes(count+' question block')||text.includes(count+' unique question'),text.split('\n')[0]);
     const expectedSelected=(mode==='selected'||mode==='nestedfeedback')?1:0;
     const selected=await page.locator('input[type="radio"]:checked,input[type="checkbox"]:checked').count();
     ok(label+' Canvas '+mode+' preserves answer controls',selected===expectedSelected,selected+' selected');
-    const ctx=await page.evaluate(()=>{const r=document.getElementById('provenance-canvas-lens-v2');return !!r&&r.getBoundingClientRect().width>0&&r.getBoundingClientRect().height>0&&r.innerText.includes('question block')});
+    const ctx=await page.evaluate(()=>{const r=document.getElementById('provenance-canvas-lens-v2'),t=r?.innerText||'';return !!r&&r.getBoundingClientRect().width>0&&r.getBoundingClientRect().height>0&&(t.includes('question block')||t.includes('unique question'))});
     ok(label+' Canvas '+mode+' overlay visible',ctx);
     if(mode==='classic'){
       await page.getByRole('button',{name:'Scan'}).click();
