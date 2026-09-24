@@ -168,8 +168,12 @@
     const ev=topEvidence(item.question,context);
     if(item.options.length){
       const confirmed=item.options.find(o=>o.feedback==='correct');
+      const rejected=item.options.filter(o=>o.feedback==='incorrect'&&o.selected);
       if(confirmed){
         return {headline:'Canvas feedback identifies: '+confirmed.label+' — '+confirmed.text,detail:'Canvas itself marks this choice as correct on the current page.',evidence:ev,source:'canvas-feedback'};
+      }
+      if(rejected.length){
+        return {headline:'Canvas feedback: '+rejected[0].label+' — '+rejected[0].text+' is marked incorrect.',detail:'The current page does not expose a confirmed correct choice to Lens, so Lens will not guess.',evidence:ev,source:'canvas-feedback'};
       }
       const ranked=item.options.map(o=>({...o,score:optionEvidenceScore(item,o,context)})).sort((x,y)=>y.score-x.score);
       const best=ranked[0],second=ranked[1],clear=best&&best.score>=25&&(!second||best.score-second.score>=5);
