@@ -12,10 +12,43 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Static integrity audit
+        run: node test/static-audit.mjs
+      - name: Install browser test runtime
+        run: |
+          npm install --no-save --no-package-lock playwright@latest
+          npx playwright install --with-deps chromium
+      - name: Start local site
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/provenance-server.log 2>&1 &
+          sleep 2
+      - name: Full browser and Canvas audit
+        env:
+          BASE_URL: http://127.0.0.1:4173/
+        run: node test/e2e.mjs
+      - name: Upload QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provenance-qa-${{ github.run_id }}
+          path: test/artifacts
+          if-no-files-found: ignore
+          retention-days: 14
+
   deploy:
+    needs: quality
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
