@@ -208,7 +208,7 @@
     lastSignature=sig;body.innerHTML='';
     countEl.textContent=p.items.length?'• '+p.items.length:'';
     const meta=document.createElement('div');meta.style.cssText='font-size:11px;color:#aeb8cb;margin-bottom:8px';
-    meta.textContent=p.items.length?'Inline review • no app switching required':'No standard Canvas question blocks detected';
+    meta.textContent=p.items.length?p.items.length+' question block'+(p.items.length===1?'':'s')+' detected • Inline review • no app switching required':'No standard Canvas question blocks detected';
     if(p.meta.frame==='top'&&p.meta.iframeCount)meta.textContent+=' • '+p.meta.iframeCount+' frame'+(p.meta.iframeCount===1?'':'s');
     body.appendChild(meta);
     if(!p.items.length){
