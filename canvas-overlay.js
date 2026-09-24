@@ -33,25 +33,34 @@
     return norm(input.innerText||(input.parentElement&&input.parentElement.innerText));
   }
   function candidateRoots(){
-    const primary=['.question','.quiz_question','[data-question-id]','.question_holder'];
-    let raw=primary.flatMap(s=>[...document.querySelectorAll(s)]).filter(visible);
-    if(!raw.length){
-      const fallback=[
-        'fieldset','[role="group"][aria-labelledby]','[data-testid*="question-container"]',
-        '[data-testid*="question-item"]','[data-testid^="question-"]'
-      ];
-      raw=fallback.flatMap(s=>[...document.querySelectorAll(s)]).filter(visible).filter(el=>{
-        const hasControl=!!el.querySelector('input,textarea,select,[role="radio"],[role="checkbox"],[contenteditable="true"]');
-        const txt=norm(el.innerText);
-        return hasControl&&txt.length>3;
-      });
+    const candidates=[];
+    const add=(els,priority)=>els.filter(visible).forEach(el=>{
+      if(!el||el.id===OVERLAY_ID||el.closest('#'+OVERLAY_ID))return;
+      const hasControl=!!el.querySelector('input,textarea,select,[role="radio"],[role="checkbox"],[contenteditable="true"]');
+      if(!hasControl&&priority<3)return;
+      if(norm(el.innerText).length<3)return;
+      candidates.push({el,priority});
+    });
+    add(['.question','.quiz_question','[data-question-id]','.question_holder'].flatMap(s=>[...document.querySelectorAll(s)]),3);
+    add(['fieldset','[data-testid*="question-container"]','[data-testid*="question-item"]','[data-testid^="question-"]','[role="group"][aria-labelledby]'].flatMap(s=>[...document.querySelectorAll(s)]),2);
+    const ctrls=[...document.querySelectorAll('input[type="radio"],input[type="checkbox"],input[type="text"],input[type="number"],textarea,select,[role="radio"],[role="checkbox"],[contenteditable="true"]')].filter(visible);
+    add(ctrls.map(c=>c.closest('fieldset,.question,.quiz_question,[data-question-id],[role="group"],li,article,section,form>div')).filter(Boolean),1);
+    candidates.sort((a,b)=>b.priority-a.priority);
+    const out=[];
+    for(const cand of candidates){
+      if(out.some(x=>x.el===cand.el))continue;
+      const containing=out.filter(x=>cand.el.contains(x.el));
+      if(containing.some(x=>x.priority>=cand.priority))continue;
+      const parent=out.find(x=>x.el.contains(cand.el));
+      if(parent){
+        if(cand.priority>=parent.priority){
+          const i=out.indexOf(parent);out.splice(i,1,cand);
+        }
+        continue;
+      }
+      out.push(cand);
     }
-    if(!raw.length){
-      const ctrls=[...document.querySelectorAll('input[type="radio"],input[type="checkbox"],textarea,select,[role="radio"],[role="checkbox"],[contenteditable="true"]')].filter(visible);
-      raw=ctrls.map(c=>c.closest('fieldset,.question,.quiz_question,[role="group"],li,article,section,form>div')).filter(Boolean);
-    }
-    raw=[...new Set(raw)];
-    return raw.filter((el,i,arr)=>!arr.some((other,j)=>j!==i&&other.contains(el)&&norm(other.innerText).length<12000));
+    return out.map(x=>x.el);
   }
   function questionText(el,index){
     const by=el.getAttribute&&el.getAttribute('aria-labelledby');
@@ -89,6 +98,7 @@
   }
   function pageContext(questionNodes){
     const clone=document.body.cloneNode(true);
+    const overlay=clone.querySelector('#'+OVERLAY_ID);if(overlay)overlay.remove();
     clone.querySelectorAll('script,style,nav,header,footer,button,input,textarea,select,[role="radio"],[role="checkbox"]').forEach(n=>n.remove());
     let text=norm(clone.innerText);
     questionNodes.forEach(q=>{const t=norm(q.innerText);if(t&&t.length<5000)text=text.replace(t,' ')});
