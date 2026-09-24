@@ -7,7 +7,7 @@ async function appRun(name,viewport){
   const page=await context.newPage();await page.setViewportSize(viewport);const done=await errors(page,name);
   await page.goto(base+'index.html?qa=e2e',{waitUntil:'networkidle'});await page.waitForFunction(()=>getComputedStyle(document.getElementById('runtimeWarning')).display==='none');
   pass(name+' boots',await page.locator('#draft').isVisible());
-  pass(name+' release version',await page.evaluate(()=>APP_VERSION==='4.2.0'));
+  pass(name+' release version',await page.evaluate(()=>APP_VERSION==='4.2.1'));
   pass(name+' no horizontal overflow',(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))<=2);
   const tabs=await page.locator('.tab').evaluateAll(ts=>ts.map(t=>t.dataset.tab));let buttons=0,bad=0;
   for(const tab of tabs){await page.locator('.tab[data-tab="'+tab+'"]').click();pass(name+' panel '+tab,await page.locator('#panel-'+tab).isVisible());const dims=await page.locator('#panel-'+tab+' button').evaluateAll(bs=>bs.filter(b=>getComputedStyle(b).display!=='none').map(b=>{const r=b.getBoundingClientRect();return[r.width,r.height]}));buttons+=dims.length;bad+=dims.filter(x=>x[0]===0||x[1]===0).length}
@@ -40,6 +40,8 @@ pass('Canvas active page shows concise hint',text.includes('Hint:'));
 pass('Canvas active page does not expose a choice recommendation',!text.includes('Best-supported by visible evidence:'));
 pass('Canvas Lens ignores current-choice UI',!text.includes('Currently selected'));
 pass('Canvas Lens filter is available',await canvas.getByRole('searchbox',{name:'Filter Canvas Lens questions'}).isVisible());
+const lensRect=await canvas.locator('#provenance-canvas-lens-v2').boundingBox();
+pass('Canvas Lens mobile footprint is compact',!!lensRect&&lensRect.width<=350&&lensRect.height<=844*.55,JSON.stringify(lensRect));
 const before=await canvas.locator('input:checked').count();await canvas.getByRole('button',{name:'Scan'}).click();pass('Canvas Lens does not alter controls',(await canvas.locator('input:checked').count())===before);
 await canvas.evaluate(()=>{const q=document.createElement('div');q.className='question';q.dataset.questionId='3';q.innerHTML='<div class="question_text">Which gas is released?</div><label><input type="radio" name="q3"> Oxygen</label><label><input type="radio" name="q3"> Nitrogen</label>';document.body.appendChild(q)});
 await canvas.waitForFunction(()=>{const t=document.querySelector('#provenance-canvas-lens-v2')?.innerText||'';return t.includes('3 unique questions')||t.includes('3 question blocks')});pass('Canvas dynamic rescan works',true);

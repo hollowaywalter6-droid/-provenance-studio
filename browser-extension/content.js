@@ -205,21 +205,26 @@
     const timer=setInterval(()=>{tries++;try{popup.postMessage(data,target)}catch(e){}if(tries>=20)clearInterval(timer)},250);
   }
 
+  const compactViewport=Math.min(innerWidth||9999,document.documentElement.clientWidth||9999)<=600;
+  const expandedWidth=compactViewport?'min(330px,calc(100vw - 28px))':'min(390px,calc(100vw - 20px))';
+  const expandedHeight=compactViewport?'44vh':'74vh';
+  const expandedBodyHeight=compactViewport?'calc(44vh - 50px)':'calc(74vh - 50px)';
   const root=document.createElement('div');root.id=OVERLAY_ID;
   root.setAttribute('data-provenance-lens','true');
   root.style.cssText='position:fixed;right:10px;bottom:10px;width:min(390px,calc(100vw - 20px));max-height:74vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.5);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto;isolation:isolate;-webkit-transform:translateZ(0);transition:width .15s ease,box-shadow .15s ease;';
   root.innerHTML='<div data-head style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;background:#171d2a;border-bottom:1px solid #2a3244"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="width:8px;height:8px;border-radius:50%;background:#63e6be;box-shadow:0 0 12px #63e6be"></span><strong style="white-space:nowrap">Canvas Lens</strong><span data-count style="font-size:11px;color:#aeb8cb;white-space:nowrap"></span></div><div style="display:flex;gap:5px"><button type="button" data-a="scan" aria-label="Rescan Canvas page">Scan</button><button type="button" data-a="side" aria-label="Move Canvas Lens to other side">↔</button><button type="button" data-a="toggle" aria-label="Minimize Canvas Lens">−</button><button type="button" data-a="close" aria-label="Close Canvas Lens">×</button></div></div><div data-body style="padding:10px;overflow:auto;max-height:calc(74vh - 50px)"></div>';
   root.querySelectorAll('button').forEach(b=>b.style.cssText='margin:0;border:1px solid #3a455e;border-radius:9px;background:#222b3e;color:#fff;padding:6px 8px;font-size:12px;font-weight:700;touch-action:manipulation');
+  root.style.width=expandedWidth;root.style.maxHeight=expandedHeight;if(compactViewport)root.style.fontSize='13px';
   document.documentElement.appendChild(root);
   root.addEventListener('pointerdown',e=>e.stopPropagation());
   root.addEventListener('click',e=>e.stopPropagation());
   root.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
-  const body=root.querySelector('[data-body]'),countEl=root.querySelector('[data-count]'),toggle=root.querySelector('[data-a="toggle"]'),sideBtn=root.querySelector('[data-a="side"]');
+  const body=root.querySelector('[data-body]'),countEl=root.querySelector('[data-count]'),toggle=root.querySelector('[data-a="toggle"]'),sideBtn=root.querySelector('[data-a="side"]');body.style.maxHeight=expandedBodyHeight;
   let lastSignature='',collapsed=false,hoverPeek=false,lensSide='right';
   let lensNotes='';try{lensNotes=localStorage.getItem('provenance-canvas-lens-notes-v1')||''}catch(_){};
   function setExpanded(expanded,temporary=false){
     body.style.display=expanded?'block':'none';
-    root.style.width=expanded?'min(390px,calc(100vw - 20px))':'156px';
+    root.style.width=expanded?expandedWidth:(compactViewport?'138px':'156px');
     root.style.boxShadow=expanded?'0 22px 60px rgba(0,0,0,.5)':'0 10px 30px rgba(0,0,0,.35)';
     toggle.textContent=expanded?'−':'+';
     toggle.setAttribute('aria-label',expanded?'Minimize Canvas Lens':'Expand Canvas Lens');

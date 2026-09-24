@@ -391,11 +391,11 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v4.2.0 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v4.2.1 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
-const APP_VERSION='4.2.0';
+const APP_VERSION='4.2.1';
 const STORE='provenance-standalone-projects-v1';
 const STORE_BACKUP='provenance-standalone-projects-backup-v1';
 const CURRENT='provenance-standalone-current-v1';
@@ -1027,9 +1027,9 @@ function iphoneCanvasLensRuntime(){
     return best&&best.score>0?{headline:'Hint: '+best.text.slice(0,240),detail:'',evidence:''}:{headline:'Hint: focus on '+words(item.question).slice(0,5).join(', ')+'.',detail:'',evidence:''}
   }
   let root=document.createElement('div');root.id=ID;root.setAttribute('data-provenance-lens','true');
-  root.style.cssText='position:fixed;right:10px;bottom:10px;width:min(390px,calc(100vw - 20px));max-height:70vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.45);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto';
-  root.innerHTML='<div data-h style="display:flex;align-items:center;justify-content:space-between;padding:9px 10px;background:#171d2a;border-bottom:1px solid #2a3244"><strong>Canvas Lens</strong><div><button data-r aria-label="Rescan Canvas page">↻</button><button data-s aria-label="Move Canvas Lens to other side">↔</button><button data-m aria-label="Minimize Canvas Lens">−</button><button data-x aria-label="Close Canvas Lens">×</button></div></div><div data-b style="padding:9px;overflow:auto;max-height:calc(70vh - 46px)"></div>';
-  root.querySelectorAll('button').forEach(b=>b.style.cssText='margin-left:4px;border:1px solid #3a455e;border-radius:9px;background:#222b3e;color:#fff;padding:6px 8px;font-weight:700');
+  root.style.cssText='position:fixed;right:14px;bottom:max(12px,env(safe-area-inset-bottom));width:min(330px,calc(100vw - 28px));max-height:44vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:16px;box-shadow:0 18px 44px rgba(0,0,0,.42);font:13px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto';
+  root.innerHTML='<div data-h style="display:flex;align-items:center;justify-content:space-between;padding:7px 8px;background:#171d2a;border-bottom:1px solid #2a3244"><strong>Canvas Lens</strong><div><button data-r aria-label="Rescan Canvas page">↻</button><button data-s aria-label="Move Canvas Lens to other side">↔</button><button data-m aria-label="Minimize Canvas Lens">−</button><button data-x aria-label="Close Canvas Lens">×</button></div></div><div data-b style="padding:8px;overflow:auto;max-height:calc(44vh - 42px)"></div>';
+  root.querySelectorAll('button').forEach(b=>b.style.cssText='margin-left:3px;border:1px solid #3a455e;border-radius:8px;background:#222b3e;color:#fff;padding:5px 7px;font-size:12px;font-weight:700');
   document.documentElement.appendChild(root);
   const body=root.querySelector('[data-b]');let collapsed=false,left=false,last='',notes='';try{notes=localStorage.getItem('provenance-canvas-lens-notes-v2')||''}catch(_){}
   function render(){
@@ -1362,7 +1362,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && window.isSecureContext) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.2.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.2.1',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
 }
 </script>
 </body>

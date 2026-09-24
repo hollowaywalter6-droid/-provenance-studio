@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Provenance Canvas Lens",
-  "version": "2.2.0",
-  "description": "Provenance Canvas Lens 2.2: concise selection-neutral Canvas review, deduplication, question filtering, confirmed post-submission feedback, and local source-note hints.",
+  "version": "2.2.1",
+  "description": "Provenance Canvas Lens 2.2.1: compact mobile overlay, concise selection-neutral Canvas review, deduplication, filtering, and confirmed review feedback.",
   "permissions": [],
   "host_permissions": [
     "https://*.instructure.com/*",
