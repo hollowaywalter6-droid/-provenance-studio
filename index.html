@@ -19,7 +19,7 @@
 *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#171b28 0,#0b0d12 45%,#080a0e 100%);
 color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
 button,input,textarea,select{font:inherit}
-button{min-height:46px;border:0;border-radius:14px;padding:12px 16px;background:#20283a;color:var(--text);font-weight:700;cursor:pointer}
+button{min-height:46px;border:0;border-radius:14px;padding:12px 16px;background:#20283a;color:var(--text);font-weight:700;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 button.primary{background:linear-gradient(135deg,#7867ff,#9a8cff)}
 button.secondary{background:#1a2231;border:1px solid var(--line)}
 button.ghost{background:transparent;border:1px solid var(--line)}
@@ -53,7 +53,7 @@ h1{font-size:1.35rem;margin:0}.sub{font-size:.82rem;color:var(--muted)}
 .label{font-size:.8rem;color:var(--muted);margin-bottom:6px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .filebox{position:relative;border:1px dashed #54617a;border-radius:18px;padding:16px;text-align:center;background:#0e131b}
-.filebox input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.filebox input{position:absolute;inset:0;opacity:0;cursor:pointer;z-index:2}
 .pill{display:inline-flex;padding:7px 10px;border-radius:999px;background:#111926;border:1px solid var(--line);font-size:.76rem}
 .good{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
 .result{white-space:pre-wrap;background:#0d121a;border:1px solid var(--line);border-radius:16px;padding:14px;min-height:120px}
@@ -133,7 +133,7 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
           <div class="filebox">
             <strong>Tap here to choose a file</strong>
             <div class="small" style="margin-top:6px">TXT, MD, CSV, JSON, DOCX, and many text-based PDFs can be extracted locally. Files that need OCR still upload safely and show a clear status.</div>
-            <input id="fileInput" type="file" accept=".txt,.md,.csv,.json,.doc,.docx,.pdf,image/*" onchange="handleFile(event)">
+            <input id="fileInput" type="file" accept=".txt,.md,.csv,.json,.docx,.pdf,image/*" onchange="handleFile(event)">
           </div>
           <div class="label" style="margin-top:16px">Camera / photo</div>
           <div class="filebox">
@@ -162,7 +162,9 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
     </div>
 
     <div class="panel" id="panel-rewrite">
+      <p class="small" style="margin-top:0">Humanize rewrites stiff or repetitive phrasing into more natural language while preserving the meaning. It improves style; it does not guarantee any AI-detector result.</p>
       <div class="three">
+        <button class="primary" onclick="rewrite('humanize')">Humanize</button>
         <button onclick="rewrite('natural')">Natural</button>
         <button onclick="rewrite('clear')">Clear</button>
         <button onclick="rewrite('concise')">Concise</button>
@@ -271,7 +273,7 @@ footer{padding:28px 0;color:var(--muted);font-size:.78rem;text-align:center}
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v2.1 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v2.3 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
@@ -467,16 +469,78 @@ function analyze(){
 }
 
 function cleanupCommon(t){
-  return t.replace(/\s+/g,' ').replace(/\s+([,.!?;:])/g,'$1').replace(/([!?])([A-Za-z])/g,'$1 $2').replace(/\.([A-Z])/g,'. $1').trim()
+  return String(t||'')
+    .replace(/\r\n?/g,'\n')
+    .replace(/[ \t]+/g,' ')
+    .replace(/\s+([,.!?;:])/g,'$1')
+    .replace(/([!?])([A-Za-z])/g,'$1 $2')
+    .replace(/\.([A-Z])/g,'. $1')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim()
+}
+function humanizeLocal(t){
+  let out=cleanupCommon(t);
+  const swaps=[
+    [/\bIt is important to note that\s*/gi,''],
+    [/\bIt should be noted that\s*/gi,''],
+    [/\bIn order to\b/gi,'To'],
+    [/\bDue to the fact that\b/gi,'Because'],
+    [/\bFurthermore,\s*/gi,'Also, '],
+    [/\bMoreover,\s*/gi,'Also, '],
+    [/\bAdditionally,\s*/gi,'Also, '],
+    [/\bTherefore,\s*/gi,'So, '],
+    [/\bNevertheless,\s*/gi,'Still, '],
+    [/\bIn conclusion,\s*/gi,'Overall, '],
+    [/\butilize\b/gi,'use'],
+    [/\bapproximately\b/gi,'about'],
+    [/\bnumerous\b/gi,'many'],
+    [/\bindividuals\b/gi,'people'],
+    [/\bcommence\b/gi,'start'],
+    [/\bterminate\b/gi,'end']
+  ];
+  swaps.forEach(function(pair){out=out.replace(pair[0],pair[1])});
+  out=out
+    .replace(/\bI am\b/g,"I'm")
+    .replace(/\bI have\b/g,"I've")
+    .replace(/\bI will\b/g,"I'll")
+    .replace(/\bdo not\b/gi,"don't")
+    .replace(/\bdoes not\b/gi,"doesn't")
+    .replace(/\bcannot\b/gi,"can't")
+    .replace(/\bwill not\b/gi,"won't");
+
+  const ss=sents(out);
+  const rebuilt=[];
+  ss.forEach(function(s,i){
+    let x=s.trim();
+    if(words(x).length>30){
+      const m=x.match(/^(.{35,}?),\s+(and|but|while|because|so)\s+(.+)$/i);
+      if(m && words(m[1]).length>=8 && words(m[3]).length>=6){
+        let first=m[1].trim();
+        if(!/[.!?]$/.test(first)) first+='.';
+        x=first+' '+m[2].charAt(0).toUpperCase()+m[2].slice(1)+' '+m[3].trim();
+      }
+    }
+    if(i>0){
+      const prev=(rebuilt[rebuilt.length-1]||'').toLowerCase();
+      if(/^also,\s/i.test(x) && /^also,\s/i.test(prev)) x=x.replace(/^also,\s*/i,'');
+      if(/^overall,\s/i.test(x) && i<ss.length-1) x=x.replace(/^overall,\s*/i,'');
+    }
+    rebuilt.push(x);
+  });
+  return cleanupCommon(rebuilt.join(' '));
 }
 function rewrite(mode){
   let t=cleanupCommon($('draft').value); if(!t){$('rewriteResult').textContent='Add text first.';return}
+  if(mode==='humanize')t=humanizeLocal(t);
   if(mode==='concise')t=t.replace(/\b(very|really|basically|actually|just|quite|rather)\b\s*/gi,'').replace(/\bin order to\b/gi,'to').replace(/\bdue to the fact that\b/gi,'because');
-  if(mode==='direct')t=t.replace(/\bIt is important to note that\s*/gi,'');
+  if(mode==='direct')t=t.replace(/\bIt is important to note that\s*/gi,'').replace(/\bIt should be noted that\s*/gi,'');
   if(mode==='clear')t=t.replace(/;/g,'.').replace(/\bhowever,\s*/gi,'But ').replace(/\btherefore,\s*/gi,'So ');
   if(mode==='academic')t=t.replace(/\ba lot of\b/gi,'many').replace(/\bthings\b/gi,'factors').replace(/\bget\b/gi,'obtain');
-  if(mode==='natural')t=t.replace(/\bFurthermore,\s*/gi,'Also, ').replace(/\bMoreover,\s*/gi,'Also, ').replace(/\bIn conclusion,\s*/gi,'Overall, ');
-  rewriteBuffer=cleanupCommon(t);$('rewriteResult').textContent=rewriteBuffer;showTab('rewrite')
+  if(mode==='natural')t=humanizeLocal(t);
+  rewriteBuffer=cleanupCommon(t);
+  $('rewriteResult').textContent=rewriteBuffer;
+  showTab('rewrite');
+  notice((mode==='humanize'?'Humanized revision':'Revision')+' ready. Review it, then tap "Use this revision."')
 }
 function grammarFix(){
   let t=cleanupCommon($('draft').value)
@@ -608,16 +672,23 @@ function runSelfTest(){
   showTab('diagnostics')
 }
 function interactiveBoot(){
-  loadCurrent();const w=$('runtimeWarning');if(w)w.style.display='none';notice('Ready • Version 2.1 • Local tools available.');
+  try{
+    loadCurrent();
+    const w=$('runtimeWarning');if(w)w.style.display='none';
+    notice('Ready • Version 2.3 • Local tools available.');
+  }catch(err){
+    const w=$('runtimeWarning');
+    if(w){w.style.display='block';w.textContent='Startup recovered with an error: '+((err&&err.message)||err)+'. Reload once, then run health checks.'}
+  }
 }
-window.addEventListener('error',e=>{const w=$('runtimeWarning');if(w){w.style.display='block';w.textContent='App error: '+e.message+'. Your saved projects have not been deleted.'}});
-window.addEventListener('unhandledrejection',e=>notice('Operation could not finish: '+(e.reason?.message||'Please try again.')));
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',interactiveBoot);else interactiveBoot();
+window.addEventListener('error',function(e){const w=$('runtimeWarning');if(w){w.style.display='block';w.textContent='App error: '+(e.message||'Unknown error')+'. Your saved projects have not been deleted.'}});
+window.addEventListener('unhandledrejection',function(e){const r=e&&e.reason;notice('Operation could not finish: '+((r&&r.message)||'Please try again.'))});
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',interactiveBoot,{once:true});else interactiveBoot();
 </script>
 
 <script>
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.3',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{}));
 }
 </script>
 </body>
