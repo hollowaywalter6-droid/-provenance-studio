@@ -34,6 +34,8 @@ async function appRun(name,viewport){
   await page.reload({waitUntil:'networkidle'});await page.locator('.tab[data-tab="account"]').click();
   pass(name+' local profile survives reload',(await page.locator('#profileName').inputValue())==='Provenance QA'&&(await page.locator('#profileEmail').inputValue())==='qa@example.com');
   pass(name+' production providers stay disabled before credentials',(await page.getByRole('button',{name:'Sign in with Apple'}).isDisabled())&&(await page.getByRole('button',{name:'Continue with Google'}).isDisabled())&&(await page.getByRole('button',{name:'Continue with Microsoft'}).isDisabled())&&(await page.getByRole('button',{name:'Continue with Facebook'}).isDisabled()));
+  const dlPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Export my local data'}).click();const dl=await dlPromise;pass(name+' local account export downloads JSON',(await dl.suggestedFilename()).endsWith('.json'));
+  page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Delete all local data'}).click();pass(name+' local account deletion clears persistent keys',await page.evaluate(()=>[PROFILE,STORE,STORE_BACKUP,CURRENT].every(k=>localStorage.getItem(k)===null)));
   await page.locator('.tab[data-tab="diagnostics"]').click();await page.getByRole('button',{name:'Run health checks'}).click();pass(name+' built-in health checks',(await page.locator('#testResults .bad').count())===0);
   await page.screenshot({path:'test/artifacts/production-'+name+'.png',fullPage:true});done();await page.close()
 }
