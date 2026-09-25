@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-const read=p=>fs.readFileSync(p,'utf8'),index=read('index.html'),overlay=read('canvas-overlay.js'),extension=read('browser-extension/content.js'),manifest=JSON.parse(read('browser-extension/manifest.json')),sw=read('sw.js'),workflow=read('.github/workflows/pages.yml'),version=JSON.parse(read('version.json')),smoke=read('test/smoke.html');
+const read=p=>fs.readFileSync(p,'utf8'),index=read('index.html'),privacy=read('privacy.html'),overlay=read('canvas-overlay.js'),extension=read('browser-extension/content.js'),manifest=JSON.parse(read('browser-extension/manifest.json')),sw=read('sw.js'),workflow=read('.github/workflows/pages.yml'),version=JSON.parse(read('version.json')),smoke=read('test/smoke.html');
 const results=[];function check(name,ok,detail=''){results.push({name,ok:!!ok,detail});if(!ok)process.exitCode=1}
 function compileHtml(source,label){const scripts=[...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);try{scripts.forEach(s=>new Function(s));check(label,true,scripts.length+' scripts')}catch(e){check(label,false,e.message)}return scripts.join('\n')}
 const js=compileHtml(index,'index syntax');compileHtml(smoke,'smoke syntax');for(const [n,c] of [['overlay',overlay],['extension',extension],['service worker',sw]]){try{new Function(c);check(n+' syntax',true)}catch(e){check(n+' syntax',false,e.message)}}
@@ -8,6 +8,7 @@ const tabs=[...markup.matchAll(/data-tab="([^"]+)"/g)].map(m=>m[1]);check('Every
 const handlers=[...new Set([...markup.matchAll(/on(?:click|change|input)="([A-Za-z_$][\w$]*)\(/g)].map(m=>m[1]))];check('Inline handlers resolve',handlers.every(n=>new RegExp('function\\s+'+n+'\\s*\\(').test(js)),handlers.length+' handlers');
 check('Release version synchronized',version.version==='4.7.0'&&index.includes("APP_VERSION='4.7.0'")&&sw.includes('provenance-v4-7-0')&&manifest.version==='2.6.0');
 check('Account foundation present',index.includes('panel-account')&&index.includes('PROFILE=')&&index.includes('saveLocalProfile'));
+check('Local data export and deletion controls present',index.includes('exportLocalAccountData')&&index.includes('deleteAllLocalData')&&index.includes('privacy.html')&&privacy.includes('Your controls'));
 check('Provider placeholders fail closed',index.includes('Sign in with Apple')&&index.includes('<button disabled>Sign in with Apple</button>'));
 check('Overlay and extension synchronized',overlay===extension);
 check('Canvas dynamic rescans',overlay.includes('MutationObserver')&&overlay.includes('render(false)'));
