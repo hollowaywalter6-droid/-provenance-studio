@@ -8,7 +8,7 @@ const tabs=[...markup.matchAll(/data-tab="([^"]+)"/g)].map(m=>m[1]);check('Every
 const handlers=[...new Set([...markup.matchAll(/on(?:click|change|input)="([A-Za-z_$][\w$]*)\(/g)].map(m=>m[1]))];check('Inline handlers resolve',handlers.every(n=>new RegExp('function\\s+'+n+'\\s*\\(').test(js)),handlers.length+' handlers');
 
 const criticalFunctions=['handleFile','handleImage','extractDocx','extractPdfSmart','ocrImageFile','ocrPdf','analyze','humanizeLocal','rewrite','grammarFix','verifyCitations','checkClaims','filterTerms','renderCanvasReview','downloadText','downloadJSON','downloadCSV','makeXLSX','openNativeFilePicker','buildAIHandoff','copyAIHandoff','shareAIHandoff','shareProjectFile','copyDraft','shareDraft','runDeepQA','runSelfTest','ensureLatestVersion'];
-check('Critical feature functions exist',criticalFunctions.every(n=>new RegExp('function\\\\s+'+n+'\\\\s*\\\\(').test(js)),criticalFunctions.length+' checked');
+check('Critical feature functions exist',criticalFunctions.every(n=>new RegExp('function\\s+'+n+'\\s*\\(').test(js)),criticalFunctions.length+' checked');
 check('External parser dependencies pinned',index.includes('pdfjs-dist@6.3.289')&&index.includes('tesseract.js@7.0.0'));
 check('Every visible app tab has a panel and callable navigation',tabs.length>=11&&tabs.every(t=>ids.includes('panel-'+t)));
 check('Release version synchronized',version.version==='4.7.0'&&index.includes("APP_VERSION='4.7.0'")&&sw.includes('provenance-v4-7-0')&&manifest.version==='2.6.0');
