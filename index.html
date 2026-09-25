@@ -400,11 +400,11 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v4.6.0 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v4.7.0 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
-const APP_VERSION='4.6.0';
+const APP_VERSION='4.7.0';
 const STORE='provenance-standalone-projects-v1';
 const STORE_BACKUP='provenance-standalone-projects-backup-v1';
 const CURRENT='provenance-standalone-current-v1';
@@ -1417,7 +1417,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && window.isSecureContext) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.6.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.7.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
 }
 </script>
 </body>
