@@ -178,6 +178,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <button class="tab" data-tab="export" onclick="showTab('export')">Export</button>
       <button class="tab" data-tab="connectors" onclick="showTab('connectors')">Connectors</button>
       <button class="tab" data-tab="diagnostics" onclick="showTab('diagnostics')">Diagnostics</button>
+      <button class="tab" data-tab="account" onclick="showTab('account')">Account</button>
     </div>
 
     <div class="panel active" id="panel-draft">
@@ -387,6 +388,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       </div>
     </div>
 
+    <div class="panel" id="panel-account">
+      <div class="two">
+        <div class="item"><strong>Provenance Account</strong><div class="small" style="margin:8px 0">Account architecture is ready for production identity providers. Until provider credentials are added, this device stays in local profile mode and your projects remain local-first.</div><div class="label">Display name</div><input id="profileName" placeholder="Your name"><div class="label" style="margin-top:10px">Email</div><input id="profileEmail" type="email" placeholder="you@example.com"><div class="toolbar"><button class="primary" onclick="saveLocalProfile()">Save local profile</button><button class="ghost" onclick="clearLocalProfile()">Clear</button></div><div id="profileState" class="small">Local profile mode</div></div>
+        <div class="item"><strong>Sign-in providers</strong><div class="small" style="margin:8px 0">These provider slots are intentionally disabled until the real project IDs, redirect URLs, credentials, and Apple signing configuration are supplied.</div><div class="toolbar"><button disabled>Sign in with Apple</button><button disabled>Continue with Google</button><button disabled>Continue with Microsoft</button><button disabled>Continue with Facebook</button></div><div class="small">No secrets are embedded in this public client. Production authentication will use secure provider configuration.</div></div>
+      </div>
+    </div>
+
     <div class="panel" id="panel-diagnostics">
       <div class="toolbar"><button class="primary" onclick="runSelfTest()">Run health checks</button><button onclick="runDeepQA()">Run deep QA</button><button onclick="openLiveSmokeTest()">Open live smoke test</button></div>
       <div id="testResults"></div>
@@ -400,6 +408,7 @@ const APP_VERSION='4.6.0';
 const STORE='provenance-standalone-projects-v1';
 const STORE_BACKUP='provenance-standalone-projects-backup-v1';
 const CURRENT='provenance-standalone-current-v1';
+const PROFILE='provenance-local-profile-v1';
 const MAX_FILE_BYTES=50*1024*1024;
 const MAX_DOCX_XML_BYTES=12*1024*1024;
 let rewriteBuffer='';
@@ -415,6 +424,9 @@ function writeStored(key,value){
 }
 
 function $(id){return document.getElementById(id)}
+function loadLocalProfile(){try{const p=JSON.parse(readStored(PROFILE)||'{}');if($('profileName'))$('profileName').value=p.name||'';if($('profileEmail'))$('profileEmail').value=p.email||'';if($('profileState'))$('profileState').textContent=(p.name||p.email)?'Local profile saved on this device':'Local profile mode'}catch(e){}}
+function saveLocalProfile(){const name=($('profileName').value||'').trim().slice(0,120),email=($('profileEmail').value||'').trim().slice(0,254);if(email&&!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)){notice('Enter a valid email address.');return}writeStored(PROFILE,JSON.stringify({name,email,updated:Date.now()}));loadLocalProfile();notice('Local profile saved. Production sign-in can be connected later without rebuilding the workspace.')}
+function clearLocalProfile(){writeStored(PROFILE,'{}');loadLocalProfile();notice('Local profile cleared from this device.')}
 function showTab(name){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===name));
   document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
@@ -1392,7 +1404,7 @@ function interactiveBoot(){
   try{
     loadCurrent();
     const w=$('runtimeWarning');if(w)w.style.display='none';
-    notice('Ready • Version '+APP_VERSION+' • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);setTimeout(ensureLatestVersion,250);
+    loadLocalProfile();notice('Ready • Version '+APP_VERSION+' • Local tools available.');updateHumanizeLabel();setTimeout(importCanvasHash,0);setTimeout(ensureLatestVersion,250);
   }catch(err){
     const w=$('runtimeWarning');
     if(w){w.style.display='block';w.textContent='Startup recovered with an error: '+((err&&err.message)||err)+'. Reload once, then run health checks.'}
