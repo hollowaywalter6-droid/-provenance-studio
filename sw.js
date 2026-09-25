@@ -1,4 +1,4 @@
-const CACHE='provenance-v4-6-0';
+const CACHE='provenance-v4-7-0';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(
@@ -10,7 +10,7 @@ self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET'||new URL(e.request.url).origin!==self.location.origin)return;
   const url=new URL(e.request.url);
   if(url.pathname.endsWith('/version.json')){
-    e.respondWith(fetch(new Request(e.request,{cache:'no-store'})).catch(()=>new Response(JSON.stringify({version:'4.6.0'}),{headers:{'content-type':'application/json'}})));
+    e.respondWith(fetch(new Request(e.request,{cache:'no-store'})).catch(()=>new Response(JSON.stringify({version:'4.7.0'}),{headers:{'content-type':'application/json'}})));
     return;
   }
   if(e.request.mode==='navigate'){
