@@ -6,6 +6,11 @@ const js=compileHtml(index,'index syntax');compileHtml(smoke,'smoke syntax');for
 const markup=index.replace(/<script(?:\s[^>]*)?>[\s\S]*?<\/script>/gi,''),ids=[...markup.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]),dup=[...new Set(ids.filter((x,i)=>ids.indexOf(x)!==i))];check('No duplicate IDs',dup.length===0,dup.join(', '));
 const tabs=[...markup.matchAll(/data-tab="([^"]+)"/g)].map(m=>m[1]);check('Every tab has panel',tabs.every(t=>ids.includes('panel-'+t)),tabs.length+' tabs');
 const handlers=[...new Set([...markup.matchAll(/on(?:click|change|input)="([A-Za-z_$][\w$]*)\(/g)].map(m=>m[1]))];check('Inline handlers resolve',handlers.every(n=>new RegExp('function\\s+'+n+'\\s*\\(').test(js)),handlers.length+' handlers');
+
+const criticalFunctions=['handleFile','handleImage','extractDocx','extractPdfSmart','ocrImageFile','ocrPdf','analyze','humanizeLocal','rewrite','grammarFix','verifyCitations','checkClaims','filterTerms','renderCanvasReview','downloadText','downloadJSON','downloadCSV','makeXLSX','openNativeFilePicker','buildAIHandoff','copyAIHandoff','shareAIHandoff','shareProjectFile','copyDraft','shareDraft','runDeepQA','runSelfTest','ensureLatestVersion'];
+check('Critical feature functions exist',criticalFunctions.every(n=>new RegExp('function\\\\s+'+n+'\\\\s*\\\\(').test(js)),criticalFunctions.length+' checked');
+check('External parser dependencies pinned',index.includes('pdfjs-dist@6.3.289')&&index.includes('tesseract.js@7.0.0'));
+check('Every visible app tab has a panel and callable navigation',tabs.length>=11&&tabs.every(t=>ids.includes('panel-'+t)));
 check('Release version synchronized',version.version==='4.7.0'&&index.includes("APP_VERSION='4.7.0'")&&sw.includes('provenance-v4-7-0')&&manifest.version==='2.6.0');
 check('Account foundation present',index.includes('panel-account')&&index.includes('PROFILE=')&&index.includes('saveLocalProfile'));
 check('Local data export and deletion controls present',index.includes('exportLocalAccountData')&&index.includes('deleteAllLocalData')&&index.includes('privacy.html')&&privacy.includes('Your controls'));
