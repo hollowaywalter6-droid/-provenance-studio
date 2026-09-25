@@ -7,7 +7,7 @@ async function appRun(name,viewport){
   const page=await context.newPage();await page.setViewportSize(viewport);const done=await errors(page,name);
   await page.goto(base+'index.html?qa=e2e',{waitUntil:'networkidle'});await page.waitForFunction(()=>getComputedStyle(document.getElementById('runtimeWarning')).display==='none');
   pass(name+' boots',await page.locator('#draft').isVisible());
-  pass(name+' release version',await page.evaluate(()=>APP_VERSION==='4.6.0'));
+  pass(name+' release version',await page.evaluate(()=>APP_VERSION==='4.7.0'));
   pass(name+' no horizontal overflow',(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))<=2);
   const tabs=await page.locator('.tab').evaluateAll(ts=>ts.map(t=>t.dataset.tab));let buttons=0,bad=0;
   for(const tab of tabs){await page.locator('.tab[data-tab="'+tab+'"]').click();pass(name+' panel '+tab,await page.locator('#panel-'+tab).isVisible());const dims=await page.locator('#panel-'+tab+' button').evaluateAll(bs=>bs.filter(b=>getComputedStyle(b).display!=='none').map(b=>{const r=b.getBoundingClientRect();return[r.width,r.height]}));buttons+=dims.length;bad+=dims.filter(x=>x[0]===0||x[1]===0).length}
@@ -28,6 +28,12 @@ async function appRun(name,viewport){
   await page.locator('.tab[data-tab="verify"]').click();await page.locator('.tab[data-tab="draft"]').click();await page.locator('#draft').fill('Uber operates globally (Uber Technologies, Inc., 2026). Revenue grew 12% in 2026.');await page.locator('.tab[data-tab="verify"]').click();await page.getByRole('button',{name:'Check citations'}).click();pass(name+' citation verifier recognizes author-date citations',((await page.locator('#citationResult').textContent())||'').includes('Author-date citations: 1'));
   await page.locator('.tab[data-tab="connectors"]').click();pass(name+' connector hub is honest',((await page.locator('#panel-connectors').innerText())||'').includes('Direct authenticated model API: not configured'));pass(name+' AI handoff works',(await page.evaluate(()=>buildAIHandoff())).includes('PROJECT CONTENT'));
   await page.locator('.tab[data-tab="canvas"]').click();pass(name+' Canvas Review replaces study queue',(await page.locator('#canvasReviewResults').count())===1&&(await page.locator('#studyQueue').count())===0);
+  await page.locator('.tab[data-tab="account"]').click();
+  pass(name+' account panel available',await page.locator('#profileName').isVisible()&&await page.locator('#profileEmail').isVisible());
+  await page.locator('#profileName').fill('Provenance QA');await page.locator('#profileEmail').fill('qa@example.com');await page.getByRole('button',{name:'Save local profile'}).click();
+  await page.reload({waitUntil:'networkidle'});await page.locator('.tab[data-tab="account"]').click();
+  pass(name+' local profile survives reload',(await page.locator('#profileName').inputValue())==='Provenance QA'&&(await page.locator('#profileEmail').inputValue())==='qa@example.com');
+  pass(name+' production providers stay disabled before credentials',(await page.getByRole('button',{name:'Sign in with Apple'}).isDisabled())&&(await page.getByRole('button',{name:'Continue with Google'}).isDisabled())&&(await page.getByRole('button',{name:'Continue with Microsoft'}).isDisabled())&&(await page.getByRole('button',{name:'Continue with Facebook'}).isDisabled()));
   await page.locator('.tab[data-tab="diagnostics"]').click();await page.getByRole('button',{name:'Run health checks'}).click();pass(name+' built-in health checks',(await page.locator('#testResults .bad').count())===0);
   await page.screenshot({path:'test/artifacts/production-'+name+'.png',fullPage:true});done();await page.close()
 }
