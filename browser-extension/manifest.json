@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Provenance Canvas Lens",
-  "version": "2.5.0",
-  "description": "Provenance Canvas Lens 2.5: compact review plus explicitly gated practice Auto-select, Auto-fill, and Auto-submit toggles.",
+  "version": "2.6.0",
+  "description": "Provenance Canvas Lens 2.6: one master mode toggle; practice sandbox automation and live Canvas assistance remain context-gated.",
   "permissions": [],
   "host_permissions": [
     "https://*.instructure.com/*",

@@ -212,15 +212,32 @@
   const root=document.createElement('div');root.id=OVERLAY_ID;
   root.setAttribute('data-provenance-lens','true');
   root.style.cssText='position:fixed;right:10px;bottom:10px;width:min(390px,calc(100vw - 20px));max-height:74vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.5);font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto;isolation:isolate;-webkit-transform:translateZ(0);transition:width .15s ease,box-shadow .15s ease;';
-  root.innerHTML='<div data-head style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;background:#171d2a;border-bottom:1px solid #2a3244"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="width:8px;height:8px;border-radius:50%;background:#63e6be;box-shadow:0 0 12px #63e6be"></span><strong style="white-space:nowrap">Canvas Lens</strong><span data-count style="font-size:11px;color:#aeb8cb;white-space:nowrap"></span></div><div style="display:flex;gap:5px"><button type="button" data-a="scan" aria-label="Rescan Canvas page">Scan</button><button type="button" data-a="side" aria-label="Move Canvas Lens to other side">↔</button><button type="button" data-a="toggle" aria-label="Minimize Canvas Lens">−</button><button type="button" data-a="close" aria-label="Close Canvas Lens">×</button></div></div><div data-body style="padding:10px;overflow:auto;max-height:calc(74vh - 50px)"></div>';
+  root.innerHTML='<div data-head style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;background:#171d2a;border-bottom:1px solid #2a3244"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="width:8px;height:8px;border-radius:50%;background:#63e6be;box-shadow:0 0 12px #63e6be"></span><strong style="white-space:nowrap">Canvas Lens</strong><span data-count style="font-size:11px;color:#aeb8cb;white-space:nowrap"></span></div><div style="display:flex;gap:5px"><button type="button" data-a="master" aria-label="Toggle Provenance mode">Mode</button><button type="button" data-a="scan" aria-label="Rescan Canvas page">Scan</button><button type="button" data-a="side" aria-label="Move Canvas Lens to other side">↔</button><button type="button" data-a="toggle" aria-label="Minimize Canvas Lens">−</button><button type="button" data-a="close" aria-label="Close Canvas Lens">×</button></div></div><div data-body style="padding:10px;overflow:auto;max-height:calc(74vh - 50px)"></div>';
   root.querySelectorAll('button').forEach(b=>b.style.cssText='margin:0;border:1px solid #3a455e;border-radius:9px;background:#222b3e;color:#fff;padding:6px 8px;font-size:12px;font-weight:700;touch-action:manipulation');
   root.style.width=expandedWidth;root.style.maxHeight=expandedHeight;if(compactViewport)root.style.fontSize='13px';
   document.documentElement.appendChild(root);
   root.addEventListener('pointerdown',e=>e.stopPropagation());
   root.addEventListener('click',e=>e.stopPropagation());
   root.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
-  const body=root.querySelector('[data-body]'),countEl=root.querySelector('[data-count]'),toggle=root.querySelector('[data-a="toggle"]'),sideBtn=root.querySelector('[data-a="side"]');body.style.maxHeight=expandedBodyHeight;
+  const body=root.querySelector('[data-body]'),countEl=root.querySelector('[data-count]'),toggle=root.querySelector('[data-a="toggle"]'),sideBtn=root.querySelector('[data-a="side"]'),masterBtn=root.querySelector('[data-a="master"]');body.style.maxHeight=expandedBodyHeight;
   let lastSignature='',collapsed=false,hoverPeek=false,lensSide='right';
+  let masterEnabled=!practiceAutofillEnabled();
+  if(!practiceAutofillEnabled()){try{const saved=localStorage.getItem('provenance-canvas-master-v1');if(saved!==null)masterEnabled=saved==='on'}catch(_){}}
+  function syncMasterButton(){
+    masterBtn.textContent=practiceAutofillEnabled()?(masterEnabled?'Auto ON':'Auto OFF'):(masterEnabled?'Assist ON':'Assist OFF');
+    masterBtn.setAttribute('aria-pressed',masterEnabled?'true':'false')
+  }
+  function setMaster(enabled){
+    masterEnabled=!!enabled;syncMasterButton();
+    if(practiceAutofillEnabled()){
+      const host=document.body||document.documentElement;
+      ['select','fill','submit'].forEach(k=>host.setAttribute('data-provenance-auto-'+k,masterEnabled?'on':'off'));
+      if(!masterEnabled)document.querySelector('[data-provenance-practice-submit="true"]')?.removeAttribute('data-provenance-auto-submitted');
+      else setTimeout(()=>runPracticeAutomation(),0)
+    }else{try{localStorage.setItem('provenance-canvas-master-v1',masterEnabled?'on':'off')}catch(_){}}
+    lastSignature='';render(true)
+  }
+  syncMasterButton();
   let lensNotes='';try{lensNotes=localStorage.getItem('provenance-canvas-lens-notes-v1')||''}catch(_){};
   function setExpanded(expanded,temporary=false){
     body.style.display=expanded?'block':'none';
@@ -306,6 +323,7 @@
     details.appendChild(ev);return details;
   }
   function render(force=false){
+    if(!masterEnabled){body.innerHTML='<div style="padding:10px;color:#aeb8cb;font-size:12px">Provenance mode is off.</div>';countEl.textContent='';return}
     const capture=scan(),p=capture.payload;
     const sig=JSON.stringify(p.items.map(x=>[x.question,x.options.map(o=>[o.text,o.feedback])]))+'|'+lensNotes;
     if(!force&&sig===lastSignature)return;
@@ -362,6 +380,7 @@
     });
     filter.oninput=()=>{const term=norm(filter.value).toLowerCase();body.querySelectorAll('[data-lens-question]').forEach(card=>{card.style.display=!term||card.dataset.lensQuestion.includes(term)?'block':'none'})};
   }
+  masterBtn.onclick=()=>setMaster(!masterEnabled);
   toggle.onclick=()=>setExpanded(collapsed);
   sideBtn.onclick=()=>{
     lensSide=lensSide==='right'?'left':'right';
@@ -380,7 +399,7 @@
   root.querySelector('[data-a="close"]').onclick=()=>{observer.disconnect();root.remove()};
   root.querySelector('[data-a="scan"]').onclick=()=>render(true);
   window.addEventListener('provenance:practice-settings',()=>{setTimeout(()=>{runPracticeAutomation();lastSignature='';render(true)},0)});
-  if(practiceAutofillEnabled())setTimeout(()=>runPracticeAutomation(),60);
+  if(practiceAutofillEnabled()&&masterEnabled)setTimeout(()=>runPracticeAutomation(),60);
   window.addEventListener('popstate',()=>setTimeout(()=>render(true),250));
   window.addEventListener('hashchange',()=>setTimeout(()=>render(true),250));
   render(true);

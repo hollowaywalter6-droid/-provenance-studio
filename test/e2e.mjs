@@ -7,7 +7,7 @@ async function appRun(name,viewport){
   const page=await context.newPage();await page.setViewportSize(viewport);const done=await errors(page,name);
   await page.goto(base+'index.html?qa=e2e',{waitUntil:'networkidle'});await page.waitForFunction(()=>getComputedStyle(document.getElementById('runtimeWarning')).display==='none');
   pass(name+' boots',await page.locator('#draft').isVisible());
-  pass(name+' release version',await page.evaluate(()=>APP_VERSION==='4.5.0'));
+  pass(name+' release version',await page.evaluate(()=>APP_VERSION==='4.6.0'));
   pass(name+' no horizontal overflow',(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))<=2);
   const tabs=await page.locator('.tab').evaluateAll(ts=>ts.map(t=>t.dataset.tab));let buttons=0,bad=0;
   for(const tab of tabs){await page.locator('.tab[data-tab="'+tab+'"]').click();pass(name+' panel '+tab,await page.locator('#panel-'+tab).isVisible());const dims=await page.locator('#panel-'+tab+' button').evaluateAll(bs=>bs.filter(b=>getComputedStyle(b).display!=='none').map(b=>{const r=b.getBoundingClientRect();return[r.width,r.height]}));buttons+=dims.length;bad+=dims.filter(x=>x[0]===0||x[1]===0).length}
@@ -41,6 +41,7 @@ pass('Canvas active page does not expose a choice recommendation',!text.includes
 pass('Canvas Lens ignores current-choice UI',!text.includes('Currently selected'));
 pass('Canvas Lens filter is available',await canvas.getByRole('searchbox',{name:'Filter Canvas Lens questions'}).isVisible());
 pass('Canvas Lens fast actions are available',await canvas.getByRole('button',{name:'Locate question on Canvas'}).count()>0&&await canvas.getByRole('button',{name:'Copy Lens cue'}).count()>0&&await canvas.getByRole('button',{name:'Go to next Canvas question'}).count()>0);
+pass('Canvas Lens has one master mode toggle',await canvas.getByRole('button',{name:'Toggle Provenance mode'}).count()===1);
 pass('Active Canvas fixture hides practice autofill',await canvas.getByRole('button',{name:'Fill all practice questions'}).count()===0);
 const checkedBeforeActions=await canvas.locator('input:checked').count();await canvas.getByRole('button',{name:'Locate question on Canvas'}).first().click();await canvas.waitForTimeout(120);pass('Locate action leaves answer controls untouched',(await canvas.locator('input:checked').count())===checkedBeforeActions);
 const lensRect=await canvas.locator('#provenance-canvas-lens-v2').boundingBox();
@@ -53,15 +54,11 @@ await canvas.screenshot({path:'test/artifacts/canvas-4-2-mobile.png',fullPage:tr
 const practice=await context.newPage();await practice.setViewportSize({width:390,height:844});await practice.goto(base+'test/practice-autofill.html',{waitUntil:'networkidle'});await practice.waitForSelector('#provenance-canvas-lens-v2');
 pass('Practice Autofill Lab exposes Fill all',await practice.getByRole('button',{name:'Fill all practice questions'}).isVisible());
 pass('Practice Autofill Lab exposes Fill this',await practice.getByRole('button',{name:'Fill this practice question'}).count()===4);
-pass('Practice automation toggles default off',!await practice.locator('#toggleAutoSelect').isChecked()&&!await practice.locator('#toggleAutoFill').isChecked()&&!await practice.locator('#toggleAutoSubmit').isChecked());
-await practice.locator('#toggleAutoSelect').check();await practice.waitForTimeout(80);
-pass('Auto-select toggle fills choices without text',await practice.locator('#p1b').isChecked()&&(await practice.locator('#p4').inputValue())==='carbon-dioxide'&&(await practice.locator('#p2').inputValue())==='');
-await practice.locator('#toggleAutoFill').check();await practice.waitForTimeout(80);
-pass('Auto-fill toggle fills text',(await practice.locator('#p2').inputValue())==='Glucose and oxygen.');
-pass('Auto-submit remains off until enabled',await practice.evaluate(()=>window.__manualSubmitCount===0));
-await practice.locator('#toggleAutoSubmit').check();await practice.waitForTimeout(120);
-pass('Auto-submit practice toggle submits once',await practice.evaluate(()=>window.__manualSubmitCount===1));
-await practice.locator('#toggleAutoSubmit').uncheck();await practice.evaluate(()=>{window.__manualSubmitCount=0});
+pass('Practice master automation defaults off',!await practice.locator('#toggleAutomation').isChecked());
+await practice.locator('#toggleAutomation').check();await practice.waitForTimeout(160);
+pass('Practice master fills choices and text',await practice.locator('#p1b').isChecked()&&(await practice.locator('#p4').inputValue())==='carbon-dioxide'&&(await practice.locator('#p2').inputValue())==='Glucose and oxygen.');
+pass('Practice master submits once',await practice.evaluate(()=>window.__manualSubmitCount===1));
+await practice.locator('#toggleAutomation').uncheck();await practice.evaluate(()=>{window.__manualSubmitCount=0});
 await practice.getByRole('button',{name:'Fill all practice questions'}).click();await practice.waitForTimeout(100);
 pass('Practice autofill selects radio answer',await practice.locator('#p1b').isChecked()&&!await practice.locator('#p1a').isChecked());
 pass('Practice autofill types text answer',(await practice.locator('#p2').inputValue())==='Glucose and oxygen.');

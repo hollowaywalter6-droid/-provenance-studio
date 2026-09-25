@@ -315,7 +315,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div class="two">
         <div>
           <div class="kicker">Canvas Lens</div>
-          <p class="small">Runs inline over supported Canvas pages. It detects and deduplicates visible questions, ignores any current choice state, and keeps the page controls untouched. On active assessments it provides concise review hints; when Canvas itself exposes official post-submission feedback, that confirmed answer can be labeled. The Practice Autofill Lab demonstrates real radio, checkbox, dropdown, and text-field automation with separate Auto-select, Auto-fill, and Auto-submit practice toggles that default OFF.</p>
+          <p class="small">Runs inline over supported Canvas pages. It detects and deduplicates visible questions, ignores any current choice state, and keeps the page controls untouched. On active assessments it provides concise review hints; when Canvas itself exposes official post-submission feedback, that confirmed answer can be labeled. The Practice Autofill Lab demonstrates real radio, checkbox, dropdown, and text-field automation with one master ON/OFF control. In the practice sandbox, ON enables Auto-select, Auto-fill, and Auto-submit together; on live Canvas pages, the same control turns Lens assistance on or off.</p>
           <div class="item" style="margin-bottom:14px">
             <strong>Lens setup</strong>
             <div class="small" style="margin:7px 0">Desktop: use the browser extension. iPhone/iPad: use the Safari bookmarklet. Both stay directly over Canvas.</div>
@@ -392,11 +392,11 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v4.5.0 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v4.6.0 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
-const APP_VERSION='4.5.0';
+const APP_VERSION='4.6.0';
 const STORE='provenance-standalone-projects-v1';
 const STORE_BACKUP='provenance-standalone-projects-backup-v1';
 const CURRENT='provenance-standalone-current-v1';
@@ -1045,11 +1045,30 @@ function iphoneCanvasLensRuntime(){
   }
   let root=document.createElement('div');root.id=ID;root.setAttribute('data-provenance-lens','true');
   root.style.cssText='position:fixed;right:14px;bottom:max(12px,env(safe-area-inset-bottom));width:min(330px,calc(100vw - 28px));max-height:44vh;z-index:2147483647;background:#101520;color:#f6f7fb;border:1px solid #384259;border-radius:16px;box-shadow:0 18px 44px rgba(0,0,0,.42);font:13px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:hidden;pointer-events:auto';
-  root.innerHTML='<div data-h style="display:flex;align-items:center;justify-content:space-between;padding:7px 8px;background:#171d2a;border-bottom:1px solid #2a3244"><strong>Canvas Lens</strong><div><button data-r aria-label="Rescan Canvas page">↻</button><button data-s aria-label="Move Canvas Lens to other side">↔</button><button data-m aria-label="Minimize Canvas Lens">−</button><button data-x aria-label="Close Canvas Lens">×</button></div></div><div data-b style="padding:8px;overflow:auto;max-height:calc(44vh - 42px)"></div>';
+  root.innerHTML='<div data-h style="display:flex;align-items:center;justify-content:space-between;padding:7px 8px;background:#171d2a;border-bottom:1px solid #2a3244"><strong>Canvas Lens</strong><div><button data-o aria-label="Toggle Provenance mode">Mode</button><button data-r aria-label="Rescan Canvas page">↻</button><button data-s aria-label="Move Canvas Lens to other side">↔</button><button data-m aria-label="Minimize Canvas Lens">−</button><button data-x aria-label="Close Canvas Lens">×</button></div></div><div data-b style="padding:8px;overflow:auto;max-height:calc(44vh - 42px)"></div>';
   root.querySelectorAll('button').forEach(b=>b.style.cssText='margin-left:3px;border:1px solid #3a455e;border-radius:8px;background:#222b3e;color:#fff;padding:5px 7px;font-size:12px;font-weight:700');
   document.documentElement.appendChild(root);
-  const body=root.querySelector('[data-b]');let collapsed=false,left=false,last='',notes='';try{notes=localStorage.getItem('provenance-canvas-lens-notes-v2')||''}catch(_){}
+  const body=root.querySelector('[data-b]'),masterBtn=root.querySelector('[data-o]');let collapsed=false,left=false,last='',notes='';try{notes=localStorage.getItem('provenance-canvas-lens-notes-v2')||''}catch(_){}
+  let masterEnabled=!practiceAutofillEnabled();
+  if(!practiceAutofillEnabled()){try{const saved=localStorage.getItem('provenance-canvas-master-v1');if(saved!==null)masterEnabled=saved==='on'}catch(_){}}
+  function syncMaster(){masterBtn.textContent=practiceAutofillEnabled()?(masterEnabled?'Auto ON':'Auto OFF'):(masterEnabled?'Assist ON':'Assist OFF');masterBtn.setAttribute('aria-pressed',masterEnabled?'true':'false')}
+  function runPracticeMaster(){
+    if(!practiceAutofillEnabled()||!masterEnabled)return;
+    unique().forEach(it=>fillPractice(it));
+    const submit=document.querySelector('[data-provenance-practice-submit="true"]');
+    if(submit&&submit.dataset.provenanceAutoSubmitted!=='true'){submit.dataset.provenanceAutoSubmitted='true';setTimeout(()=>submit.click(),50)}
+  }
+  function setMaster(on){
+    masterEnabled=!!on;syncMaster();
+    if(practiceAutofillEnabled()){
+      const host=document.body||document.documentElement;['select','fill','submit'].forEach(k=>host.setAttribute('data-provenance-auto-'+k,masterEnabled?'on':'off'));
+      if(!masterEnabled)document.querySelector('[data-provenance-practice-submit="true"]')?.removeAttribute('data-provenance-auto-submitted');else setTimeout(runPracticeMaster,0)
+    }else{try{localStorage.setItem('provenance-canvas-master-v1',masterEnabled?'on':'off')}catch(_){}}
+    last='';render()
+  }
+  syncMaster();
   function render(){
+    if(!masterEnabled){body.innerHTML='<div style="padding:8px;color:#aeb8cb;font-size:12px">Provenance mode is off.</div>';return}
     const all=unique(),ctx=context(all),shown=all.slice(0,100);
     const sig=JSON.stringify(shown.map(x=>[x.question,x.options.map(o=>[o.text,o.feedback])]))+'|'+notes;if(sig===last)return;last=sig;body.innerHTML='';
     const meta=document.createElement('div');meta.style.cssText='font-size:11px;color:#aeb8cb;margin-bottom:7px';meta.textContent=all.length?(all.length+' unique question'+(all.length===1?'':'s')+' • '+(all.length>100?'first 100 listed':'all listed')):'No question detected';body.appendChild(meta);const filter=document.createElement('input');filter.type='search';filter.placeholder='Filter questions…';filter.setAttribute('aria-label','Filter Canvas Lens questions');filter.style.cssText='box-sizing:border-box;width:100%;margin:0 0 7px;padding:8px 9px;border:1px solid #3a455e;border-radius:8px;background:#0a0f17;color:#fff;font-size:12px';body.appendChild(filter);
@@ -1058,7 +1077,7 @@ function iphoneCanvasLensRuntime(){
     shown.forEach((it,j)=>{const box=document.createElement('div');box.style.cssText='border:1px solid #2a3346;border-radius:13px;padding:9px;margin:7px 0;background:#0c1119';const q=document.createElement('div');q.style.cssText='font-weight:800;line-height:1.35';q.textContent=(it.index||j+1)+'. '+it.question.slice(0,450);const ans=response(it,ctx,notes);const a=document.createElement('div');a.style.cssText='margin-top:7px;padding:8px;border-radius:9px;background:#141c29';const tag=document.createElement('div');tag.style.cssText='font-size:10px;color:#63e6be;font-weight:800;text-transform:uppercase';tag.textContent='Lens review';const hd=document.createElement('div');hd.style.cssText='margin-top:4px;font-weight:800';hd.textContent=ans.headline;const dt=document.createElement('div');dt.style.cssText='margin-top:4px;color:#aeb8cb;font-size:12px';dt.textContent=ans.detail;a.append(tag,hd,dt);if(ans.evidence){const ev=document.createElement('details'),sm=document.createElement('summary'),tx=document.createElement('div');sm.textContent='Evidence';tx.style.cssText='margin-top:5px;color:#aeb8cb;font-size:12px';tx.textContent=ans.evidence;ev.append(sm,tx);a.appendChild(ev)}const bar=document.createElement('div');bar.style.cssText='display:flex;gap:5px;flex-wrap:wrap;margin-top:7px';const mk=(t,l)=>{const b=document.createElement('button');b.textContent=t;b.setAttribute('aria-label',l||t);b.style.cssText='margin:0;border:1px solid #3a455e;border-radius:8px;background:#1d2637;color:#fff;padding:5px 7px;font-size:11px;font-weight:800';return b};if(practiceAutofillEnabled()){const fl=mk('Fill this','Fill this practice question');fl.onclick=()=>{const ok=fillPractice(it);fl.textContent=ok?'Filled':'No key';setTimeout(()=>fl.textContent='Fill this',900)};bar.append(fl)}const lc=mk('Locate','Locate question on Canvas');lc.onclick=()=>locate(it);const cp=mk('Copy cue','Copy Lens cue');cp.onclick=async()=>{const ok=await copyCue(ans.headline);cp.textContent=ok?'Copied':'Blocked';setTimeout(()=>cp.textContent='Copy cue',900)};const nx=mk('Next','Go to next Canvas question');nx.onclick=()=>locate(shown[(j+1)%shown.length]);bar.append(lc,cp,nx);box.append(q,a,bar);box.dataset.lensQuestion=norm(it.question+' '+it.options.map(o=>o.text).join(' ')).toLowerCase();body.appendChild(box)});filter.oninput=()=>{const term=norm(filter.value).toLowerCase();body.querySelectorAll('[data-lens-question]').forEach(card=>{card.style.display=!term||card.dataset.lensQuestion.includes(term)?'block':'none'})};
   }
   const onScroll=()=>{clearTimeout(window.__provenanceLensTimer);window.__provenanceLensTimer=setTimeout(()=>{last='';render()},220)};
-  root.querySelector('[data-r]').onclick=()=>{last='';render()};root.querySelector('[data-s]').onclick=()=>{left=!left;root.style.right=left?'auto':'10px';root.style.left=left?'10px':'auto'};root.querySelector('[data-m]').onclick=()=>{collapsed=!collapsed;body.style.display=collapsed?'none':'block';root.style.width=collapsed?'136px':'min(330px,calc(100vw - 28px))';root.querySelector('[data-m]').textContent=collapsed?'+':'−'};root.querySelector('[data-x]').onclick=()=>{window.removeEventListener('scroll',onScroll);root.remove()};
+  root.querySelector('[data-o]').onclick=()=>setMaster(!masterEnabled);root.querySelector('[data-r]').onclick=()=>{last='';render()};root.querySelector('[data-s]').onclick=()=>{left=!left;root.style.right=left?'auto':'10px';root.style.left=left?'10px':'auto'};root.querySelector('[data-m]').onclick=()=>{collapsed=!collapsed;body.style.display=collapsed?'none':'block';root.style.width=collapsed?'136px':'min(330px,calc(100vw - 28px))';root.querySelector('[data-m]').textContent=collapsed?'+':'−'};root.querySelector('[data-x]').onclick=()=>{window.removeEventListener('scroll',onScroll);root.remove()};
   root.addEventListener('click',e=>e.stopPropagation());root.addEventListener('pointerdown',e=>e.stopPropagation());window.addEventListener('scroll',onScroll,{passive:true});window.__provenanceIphoneLensCleanup=()=>window.removeEventListener('scroll',onScroll);render()
 }
 function canvasBookmarklet(){return 'javascript:('+iphoneCanvasLensRuntime.toString()+')()'}
@@ -1386,7 +1405,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && window.isSecureContext) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.5.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.6.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
 }
 </script>
 </body>
