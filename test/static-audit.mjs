@@ -6,7 +6,9 @@ const js=compileHtml(index,'index syntax');compileHtml(smoke,'smoke syntax');for
 const markup=index.replace(/<script(?:\s[^>]*)?>[\s\S]*?<\/script>/gi,''),ids=[...markup.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]),dup=[...new Set(ids.filter((x,i)=>ids.indexOf(x)!==i))];check('No duplicate IDs',dup.length===0,dup.join(', '));
 const tabs=[...markup.matchAll(/data-tab="([^"]+)"/g)].map(m=>m[1]);check('Every tab has panel',tabs.every(t=>ids.includes('panel-'+t)),tabs.length+' tabs');
 const handlers=[...new Set([...markup.matchAll(/on(?:click|change|input)="([A-Za-z_$][\w$]*)\(/g)].map(m=>m[1]))];check('Inline handlers resolve',handlers.every(n=>new RegExp('function\\s+'+n+'\\s*\\(').test(js)),handlers.length+' handlers');
-check('Release version synchronized',version.version==='4.6.0'&&index.includes("APP_VERSION='4.6.0'")&&sw.includes('provenance-v4-6-0')&&manifest.version==='2.6.0');
+check('Release version synchronized',version.version==='4.7.0'&&index.includes("APP_VERSION='4.7.0'")&&sw.includes('provenance-v4-7-0')&&manifest.version==='2.6.0');
+check('Account foundation present',index.includes('panel-account')&&index.includes('PROFILE=')&&index.includes('saveLocalProfile'));
+check('Provider placeholders fail closed',index.includes('Sign in with Apple')&&index.includes('<button disabled>Sign in with Apple</button>'));
 check('Overlay and extension synchronized',overlay===extension);
 check('Canvas dynamic rescans',overlay.includes('MutationObserver')&&overlay.includes('render(false)'));
 check('Canvas nested deduplication',overlay.includes('questionSignature')&&overlay.includes('uniqueQuestions'));
