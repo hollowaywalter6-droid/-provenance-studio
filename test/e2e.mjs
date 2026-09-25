@@ -52,9 +52,11 @@ await canvas.waitForFunction(()=>{const t=document.querySelector('#provenance-ca
 await canvas.screenshot({path:'test/artifacts/canvas-4-2-mobile.png',fullPage:true});canvasDone();await canvas.close();
 
 const practice=await context.newPage();await practice.setViewportSize({width:390,height:844});await practice.goto(base+'test/practice-autofill.html',{waitUntil:'networkidle'});await practice.waitForSelector('#provenance-canvas-lens-v2');
-pass('Practice master automation defaults off',!await practice.locator('#toggleAutomation').isChecked());
+const practiceMaster=practice.getByRole('button',{name:'Toggle Provenance mode'});
+pass('Practice has exactly one master automation control',await practiceMaster.count()===1);
+pass('Practice master automation defaults off',(await practiceMaster.getAttribute('aria-pressed'))==='false');
 pass('Practice fill controls are hidden while master is off',await practice.getByRole('button',{name:'Fill all practice questions'}).count()===0&&await practice.getByRole('button',{name:'Fill this practice question'}).count()===0);
-await practice.locator('#toggleAutomation').check();await practice.waitForTimeout(180);
+await practiceMaster.click();await practice.waitForTimeout(180);
 pass('Practice fill controls appear while master is on',await practice.getByRole('button',{name:'Fill all practice questions'}).isVisible()&&await practice.getByRole('button',{name:'Fill this practice question'}).count()>0);
 pass('Practice master fills radio answer',await practice.locator('#p1b').isChecked()&&!await practice.locator('#p1a').isChecked());
 pass('Practice master fills text answer',(await practice.locator('#p2').inputValue())==='Glucose and oxygen.');
@@ -62,8 +64,8 @@ pass('Practice master fills checkbox answers',await practice.locator('#p3a').isC
 pass('Practice master fills dropdown answer',(await practice.locator('#p4').inputValue())==='carbon-dioxide');
 pass('Practice master submits once',await practice.evaluate(()=>window.__manualSubmitCount===1));
 await practice.waitForTimeout(120);pass('Practice master does not double-submit',await practice.evaluate(()=>window.__manualSubmitCount===1));
-await practice.locator('#toggleAutomation').uncheck();await practice.waitForTimeout(80);
-pass('Practice master turns automation back off',await practice.getByRole('button',{name:'Fill all practice questions'}).count()===0);
+await practiceMaster.click();await practice.waitForTimeout(80);
+pass('Practice master turns automation back off',(await practiceMaster.getAttribute('aria-pressed'))==='false'&&await practice.getByRole('button',{name:'Fill all practice questions'}).count()===0);
 await practice.close();
 
 const feedback=await context.newPage();await feedback.goto(base+'test/canvas-compat.html?mode=nestedfeedback',{waitUntil:'networkidle'});await feedback.waitForSelector('#provenance-canvas-lens-v2');const ft=await feedback.locator('#provenance-canvas-lens-v2').innerText();

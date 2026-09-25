@@ -6,10 +6,7 @@
 <p class="lesson">This developer sandbox uses an explicit local answer key. Photosynthesis uses carbon dioxide and water with light energy, and produces glucose and oxygen. Chlorophyll absorbs light.</p>
 <section id="automationControls" data-provenance-lens-ignore="true" style="background:#fff;border:1px solid #cbd3df;border-radius:12px;padding:14px;margin:14px 0">
   <strong>One-button automation</strong>
-  <div style="display:grid;gap:10px;margin-top:10px">
-    <label><input id="toggleAutomation" type="checkbox"> Provenance Automation — Auto-select + Auto-fill + Auto-submit</label>
-  </div>
-  <p style="font-size:13px;color:#5c687a;margin:10px 0 0">Starts OFF. Turning it ON enables all three behaviors together in this practice sandbox.</p>
+  <p style="font-size:13px;color:#5c687a;margin:10px 0 0">Use the single <b>Auto OFF / Auto ON</b> button in the Canvas Lens header. It starts OFF; turning it ON enables Auto-select, Auto-fill, and Auto-submit together in this practice sandbox.</p>
 </section>
 <div class="question" data-question-id="p1">
   <div class="question_text">Which substance absorbs light during photosynthesis?</div>
@@ -35,17 +32,10 @@
 <div id="submitStatus" aria-live="polite"></div>
 <script>
 window.__manualSubmitCount=0;
-function applyAutomationSettings(){
-  const on=document.getElementById('toggleAutomation').checked,body=document.body;
-  body.setAttribute('data-provenance-auto-select',on?'on':'off');
-  body.setAttribute('data-provenance-auto-fill',on?'on':'off');
-  body.setAttribute('data-provenance-auto-submit',on?'on':'off');
-  if(!on)document.getElementById('manualSubmit').removeAttribute('data-provenance-auto-submitted');
-  window.dispatchEvent(new Event('provenance:practice-settings'));
-}
-document.getElementById('toggleAutomation').addEventListener('change',applyAutomationSettings);
+document.body.setAttribute('data-provenance-auto-select','off');
+document.body.setAttribute('data-provenance-auto-fill','off');
+document.body.setAttribute('data-provenance-auto-submit','off');
 document.getElementById('manualSubmit').onclick=()=>{window.__manualSubmitCount++;document.getElementById('submitStatus').textContent='Practice submit pressed.'};
-applyAutomationSettings();
 window.PROVENANCE_APP_URL=location.origin+location.pathname.replace(/\/test\/practice-autofill\.html$/,'/');
 </script>
 <script src="../canvas-overlay.js"></script>
