@@ -52,19 +52,18 @@ await canvas.waitForFunction(()=>{const t=document.querySelector('#provenance-ca
 await canvas.screenshot({path:'test/artifacts/canvas-4-2-mobile.png',fullPage:true});canvasDone();await canvas.close();
 
 const practice=await context.newPage();await practice.setViewportSize({width:390,height:844});await practice.goto(base+'test/practice-autofill.html',{waitUntil:'networkidle'});await practice.waitForSelector('#provenance-canvas-lens-v2');
-pass('Practice Autofill Lab exposes Fill all',await practice.getByRole('button',{name:'Fill all practice questions'}).isVisible());
-pass('Practice Autofill Lab exposes Fill this',await practice.getByRole('button',{name:'Fill this practice question'}).count()===4);
 pass('Practice master automation defaults off',!await practice.locator('#toggleAutomation').isChecked());
-await practice.locator('#toggleAutomation').check();await practice.waitForTimeout(160);
-pass('Practice master fills choices and text',await practice.locator('#p1b').isChecked()&&(await practice.locator('#p4').inputValue())==='carbon-dioxide'&&(await practice.locator('#p2').inputValue())==='Glucose and oxygen.');
+pass('Practice fill controls are hidden while master is off',await practice.getByRole('button',{name:'Fill all practice questions'}).count()===0&&await practice.getByRole('button',{name:'Fill this practice question'}).count()===0);
+await practice.locator('#toggleAutomation').check();await practice.waitForTimeout(180);
+pass('Practice fill controls appear while master is on',await practice.getByRole('button',{name:'Fill all practice questions'}).isVisible()&&await practice.getByRole('button',{name:'Fill this practice question'}).count()===4);
+pass('Practice master fills radio answer',await practice.locator('#p1b').isChecked()&&!await practice.locator('#p1a').isChecked());
+pass('Practice master fills text answer',(await practice.locator('#p2').inputValue())==='Glucose and oxygen.');
+pass('Practice master fills checkbox answers',await practice.locator('#p3a').isChecked()&&await practice.locator('#p3c').isChecked()&&!await practice.locator('#p3b').isChecked());
+pass('Practice master fills dropdown answer',(await practice.locator('#p4').inputValue())==='carbon-dioxide');
 pass('Practice master submits once',await practice.evaluate(()=>window.__manualSubmitCount===1));
-await practice.locator('#toggleAutomation').uncheck();await practice.evaluate(()=>{window.__manualSubmitCount=0});
-await practice.getByRole('button',{name:'Fill all practice questions'}).click();await practice.waitForTimeout(100);
-pass('Practice autofill selects radio answer',await practice.locator('#p1b').isChecked()&&!await practice.locator('#p1a').isChecked());
-pass('Practice autofill types text answer',(await practice.locator('#p2').inputValue())==='Glucose and oxygen.');
-pass('Practice autofill selects checkbox answers',await practice.locator('#p3a').isChecked()&&await practice.locator('#p3c').isChecked()&&!await practice.locator('#p3b').isChecked());
-pass('Practice autofill selects dropdown answer',(await practice.locator('#p4').inputValue())==='carbon-dioxide');
-pass('Practice autofill leaves submit manual',await practice.evaluate(()=>window.__manualSubmitCount===0));
+await practice.waitForTimeout(120);pass('Practice master does not double-submit',await practice.evaluate(()=>window.__manualSubmitCount===1));
+await practice.locator('#toggleAutomation').uncheck();await practice.waitForTimeout(80);
+pass('Practice master turns automation back off',await practice.getByRole('button',{name:'Fill all practice questions'}).count()===0);
 await practice.close();
 
 const feedback=await context.newPage();await feedback.goto(base+'test/canvas-compat.html?mode=nestedfeedback',{waitUntil:'networkidle'});await feedback.waitForSelector('#provenance-canvas-lens-v2');const ft=await feedback.locator('#provenance-canvas-lens-v2').innerText();
