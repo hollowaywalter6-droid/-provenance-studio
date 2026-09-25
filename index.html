@@ -315,7 +315,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div class="two">
         <div>
           <div class="kicker">Canvas Lens</div>
-          <p class="small">Runs inline over supported Canvas pages. It detects and deduplicates visible questions, ignores any current choice state, and keeps the page controls untouched. On active assessments it provides concise review hints; when Canvas itself exposes official post-submission feedback, that confirmed answer can be labeled. The Practice Autofill Lab demonstrates real radio, checkbox, dropdown, and text-field filling without submission.</p>
+          <p class="small">Runs inline over supported Canvas pages. It detects and deduplicates visible questions, ignores any current choice state, and keeps the page controls untouched. On active assessments it provides concise review hints; when Canvas itself exposes official post-submission feedback, that confirmed answer can be labeled. The Practice Autofill Lab demonstrates real radio, checkbox, dropdown, and text-field automation with separate Auto-select, Auto-fill, and Auto-submit practice toggles that default OFF.</p>
           <div class="item" style="margin-bottom:14px">
             <strong>Lens setup</strong>
             <div class="small" style="margin:7px 0">Desktop: use the browser extension. iPhone/iPad: use the Safari bookmarklet. Both stay directly over Canvas.</div>
@@ -392,11 +392,11 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
       <div id="testResults"></div>
     </div>
   </section>
-  <footer>Provenance Studio Standalone v4.4.0 • Local-first • No Replit credits required</footer>
+  <footer>Provenance Studio Standalone v4.5.0 • Local-first • No Replit credits required</footer>
 </div>
 
 <script>
-const APP_VERSION='4.4.0';
+const APP_VERSION='4.5.0';
 const STORE='provenance-standalone-projects-v1';
 const STORE_BACKUP='provenance-standalone-projects-backup-v1';
 const CURRENT='provenance-standalone-current-v1';
@@ -1386,7 +1386,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 if ('serviceWorker' in navigator && window.isSecureContext) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.4.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4.5.0',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'})}).catch(()=>{}));
 }
 </script>
 </body>

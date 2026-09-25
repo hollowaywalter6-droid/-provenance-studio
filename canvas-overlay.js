@@ -251,25 +251,51 @@
   function emitPracticeInput(control){
     control.dispatchEvent(new Event('input',{bubbles:true}));control.dispatchEvent(new Event('change',{bubbles:true}))
   }
-  function fillPracticeQuestion(item){
+  function practiceAutomationSettings(){
+    const host=document.body||document.documentElement;
+    return {
+      autoSelect:host.getAttribute('data-provenance-auto-select')==='on',
+      autoFill:host.getAttribute('data-provenance-auto-fill')==='on',
+      autoSubmit:host.getAttribute('data-provenance-auto-submit')==='on'
+    }
+  }
+  function fillPracticeQuestion(item,modes={select:true,text:true}){
     if(!practiceAutofillEnabled())return false;
     const sig=questionSignature(item),pair=uniqueQuestions(candidateRoots()).find(p=>questionSignature(p.item)===sig);
     if(!pair||!pair.el)return false;
     const root=pair.el;let changed=0;
-    root.querySelectorAll('input[type="radio"],input[type="checkbox"]').forEach(control=>{
-      const flag=control.getAttribute('data-provenance-correct');if(flag===null)return;
-      const shouldCheck=flag==='true';if(control.checked!==shouldCheck){control.checked=shouldCheck;emitPracticeInput(control);changed++}
-    });
-    root.querySelectorAll('select').forEach(control=>{
-      const option=[...control.options].find(o=>o.getAttribute('data-provenance-correct')==='true');
-      if(option&&control.value!==option.value){control.value=option.value;emitPracticeInput(control);changed++}
-    });
-    root.querySelectorAll('textarea,input[type="text"],input[type="number"],[contenteditable="true"]').forEach(control=>{
-      const answer=control.getAttribute('data-provenance-answer');if(answer===null)return;
-      const current=control.isContentEditable?control.textContent:control.value;
-      if(current!==answer){if(control.isContentEditable)control.textContent=answer;else control.value=answer;emitPracticeInput(control);changed++}
-    });
+    if(modes.select){
+      root.querySelectorAll('input[type="radio"],input[type="checkbox"]').forEach(control=>{
+        const flag=control.getAttribute('data-provenance-correct');if(flag===null)return;
+        const shouldCheck=flag==='true';if(control.checked!==shouldCheck){control.checked=shouldCheck;emitPracticeInput(control);changed++}
+      });
+      root.querySelectorAll('select').forEach(control=>{
+        const option=[...control.options].find(o=>o.getAttribute('data-provenance-correct')==='true');
+        if(option&&control.value!==option.value){control.value=option.value;emitPracticeInput(control);changed++}
+      })
+    }
+    if(modes.text){
+      root.querySelectorAll('textarea,input[type="text"],input[type="number"],[contenteditable="true"]').forEach(control=>{
+        const answer=control.getAttribute('data-provenance-answer');if(answer===null)return;
+        const current=control.isContentEditable?control.textContent:control.value;
+        if(current!==answer){if(control.isContentEditable)control.textContent=answer;else control.value=answer;emitPracticeInput(control);changed++}
+      })
+    }
     return changed>0
+  }
+  function runPracticeAutomation(){
+    if(!practiceAutofillEnabled())return false;
+    const settings=practiceAutomationSettings(),items=scan().payload.items||[];
+    if(settings.autoSelect||settings.autoFill){
+      items.forEach(item=>fillPracticeQuestion(item,{select:settings.autoSelect,text:settings.autoFill}))
+    }
+    if(settings.autoSubmit){
+      const submit=document.querySelector('[data-provenance-practice-submit="true"]');
+      if(submit&&submit.dataset.provenanceAutoSubmitted!=='true'){
+        submit.dataset.provenanceAutoSubmitted='true';setTimeout(()=>submit.click(),50)
+      }
+    }
+    return true
   }
   function evidenceDetails(response){
     const details=document.createElement('details');details.style.cssText='margin-top:8px;border-top:1px solid #263147;padding-top:7px';
@@ -353,6 +379,8 @@
   observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['aria-hidden','hidden','class']});
   root.querySelector('[data-a="close"]').onclick=()=>{observer.disconnect();root.remove()};
   root.querySelector('[data-a="scan"]').onclick=()=>render(true);
+  window.addEventListener('provenance:practice-settings',()=>{setTimeout(()=>{runPracticeAutomation();lastSignature='';render(true)},0)});
+  if(practiceAutofillEnabled())setTimeout(()=>runPracticeAutomation(),60);
   window.addEventListener('popstate',()=>setTimeout(()=>render(true),250));
   window.addEventListener('hashchange',()=>setTimeout(()=>render(true),250));
   render(true);

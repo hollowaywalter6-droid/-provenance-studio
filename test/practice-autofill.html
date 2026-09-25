@@ -4,6 +4,15 @@
 <body data-provenance-autofill="practice">
 <h1>Practice Autofill Lab</h1>
 <p class="lesson">This developer sandbox uses an explicit local answer key. Photosynthesis uses carbon dioxide and water with light energy, and produces glucose and oxygen. Chlorophyll absorbs light.</p>
+<section id="automationControls" style="background:#fff;border:1px solid #cbd3df;border-radius:12px;padding:14px;margin:14px 0">
+  <strong>Automation controls</strong>
+  <div style="display:grid;gap:10px;margin-top:10px">
+    <label><input id="toggleAutoSelect" type="checkbox"> Auto-select choices</label>
+    <label><input id="toggleAutoFill" type="checkbox"> Auto-fill text fields</label>
+    <label><input id="toggleAutoSubmit" type="checkbox"> Auto-submit practice demo</label>
+  </div>
+  <p style="font-size:13px;color:#5c687a;margin:10px 0 0">All automation starts OFF. These controls apply only to this practice sandbox.</p>
+</section>
 <div class="question" data-question-id="p1">
   <div class="question_text">Which substance absorbs light during photosynthesis?</div>
   <label><input id="p1a" type="radio" name="p1" data-provenance-correct="false"> Oxygen</label>
@@ -24,8 +33,22 @@
   <div class="question_text">Which gas is used during photosynthesis?</div>
   <select id="p4"><option value="">Choose one</option><option value="oxygen">Oxygen</option><option value="carbon-dioxide" data-provenance-correct="true">Carbon dioxide</option><option value="nitrogen">Nitrogen</option></select>
 </div>
-<button id="manualSubmit" class="manual" type="button">Manual submit demo</button>
+<button id="manualSubmit" class="manual" type="button" data-provenance-practice-submit="true">Manual submit demo</button>
 <div id="submitStatus" aria-live="polite"></div>
-<script>window.__manualSubmitCount=0;document.getElementById('manualSubmit').onclick=()=>{window.__manualSubmitCount++;document.getElementById('submitStatus').textContent='Manual submit pressed.'};window.PROVENANCE_APP_URL=location.origin+location.pathname.replace(/\/test\/practice-autofill\.html$/,'/');</script>
+<script>
+window.__manualSubmitCount=0;
+function applyAutomationSettings(){
+  const body=document.body;
+  body.setAttribute('data-provenance-auto-select',document.getElementById('toggleAutoSelect').checked?'on':'off');
+  body.setAttribute('data-provenance-auto-fill',document.getElementById('toggleAutoFill').checked?'on':'off');
+  body.setAttribute('data-provenance-auto-submit',document.getElementById('toggleAutoSubmit').checked?'on':'off');
+  if(!document.getElementById('toggleAutoSubmit').checked)document.getElementById('manualSubmit').removeAttribute('data-provenance-auto-submitted');
+  window.dispatchEvent(new Event('provenance:practice-settings'));
+}
+['toggleAutoSelect','toggleAutoFill','toggleAutoSubmit'].forEach(id=>document.getElementById(id).addEventListener('change',applyAutomationSettings));
+document.getElementById('manualSubmit').onclick=()=>{window.__manualSubmitCount++;document.getElementById('submitStatus').textContent='Practice submit pressed.'};
+applyAutomationSettings();
+window.PROVENANCE_APP_URL=location.origin+location.pathname.replace(/\/test\/practice-autofill\.html$/,'/');
+</script>
 <script src="../canvas-overlay.js"></script>
 </body></html>

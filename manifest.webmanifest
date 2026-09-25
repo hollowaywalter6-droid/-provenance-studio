@@ -2,7 +2,7 @@
   "name": "Provenance Studio",
   "short_name": "Provenance",
   "description": "Production local-first document, writing, verification, Canvas review, OCR, and export workspace",
-  "start_url": "./?v=4.4.0",
+  "start_url": "./?v=4.5.0",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0b0d12",
