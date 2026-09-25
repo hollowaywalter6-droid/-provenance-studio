@@ -47,7 +47,7 @@
   function candidateRoots(){
     const candidates=[];
     const add=(els,priority)=>els.filter(visible).forEach(el=>{
-      if(!el||el.id===OVERLAY_ID||el.closest('#'+OVERLAY_ID))return;
+      if(!el||el.id===OVERLAY_ID||el.closest('#'+OVERLAY_ID)||el.closest('[data-provenance-lens-ignore="true"]'))return;
       const hasControl=!!el.querySelector('input,textarea,select,[role="radio"],[role="checkbox"],[contenteditable="true"]');
       if(!hasControl&&priority<3)return;
       if(norm(el.innerText).length<3)return;

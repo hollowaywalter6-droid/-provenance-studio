@@ -61,7 +61,7 @@ pass('Auto-fill toggle fills text',(await practice.locator('#p2').inputValue())=
 pass('Auto-submit remains off until enabled',await practice.evaluate(()=>window.__manualSubmitCount===0));
 await practice.locator('#toggleAutoSubmit').check();await practice.waitForTimeout(120);
 pass('Auto-submit practice toggle submits once',await practice.evaluate(()=>window.__manualSubmitCount===1));
-await practice.locator('#toggleAutoSubmit').uncheck();
+await practice.locator('#toggleAutoSubmit').uncheck();await practice.evaluate(()=>{window.__manualSubmitCount=0});
 await practice.getByRole('button',{name:'Fill all practice questions'}).click();await practice.waitForTimeout(100);
 pass('Practice autofill selects radio answer',await practice.locator('#p1b').isChecked()&&!await practice.locator('#p1a').isChecked());
 pass('Practice autofill types text answer',(await practice.locator('#p2').inputValue())==='Glucose and oxygen.');
